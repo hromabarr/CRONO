@@ -1,0 +1,18 @@
+# Normalización de fin de línea.
+#
+# El proyecto se edita en Windows pero se compila en un runner macOS. Un CRLF
+# colado en el YAML del workflow hace que bash falle con `$'\r': command not
+# found`, un error que no dice en absoluto cuál es la causa. Estos archivos se
+# fuerzan a LF siempre.
+
+* text=auto eol=lf
+
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.swift text eol=lf
+*.sh    text eol=lf
+*.json  text eol=lf
+*.html  text eol=lf
+
+*.png binary
+*.ipa binary
