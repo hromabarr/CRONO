@@ -62,6 +62,16 @@ jobs:
           echo "Usando $NAME ($UDID)"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
 
+      # El runner reutiliza el mismo simulador entre ejecuciones, así que el
+      # contenedor de la app sobrevive. Un almacén de SwiftData creado con un
+      # esquema anterior no se puede abrir sin plan de migración, y el fallo
+      # aparece como un error de CoreData que no tiene nada que ver con el
+      # cambio que estés probando.
+      - name: Desinstalar la app del simulador
+        run: |
+          xcrun simctl uninstall "${{ steps.sim.outputs.udid }}" "$BUNDLE_ID" 2>/dev/null \
+            || echo "No estaba instalada; nada que borrar."
+
       - name: Ejecutar los tests
         run: |
           # `pipefail` es imprescindible: sin él, el `tee` devolvería 0 y el
@@ -108,6 +118,11 @@ jobs:
           fallos=$(grep -E "Test Case .* failed|✘ |Issue recorded|XCTAssert.* failed|error: -\[" \
             xcodebuild.log | sed "s|$ROOT||" | sort -u | head -40)
 
+          # Fallos que no son ni de compilación ni de aserción: la app o el
+          # runner se caen, el simulador no arranca, se agota el tiempo.
+          caidas=$(grep -E "crashed|Early unexpected exit|did not finish|Failed to (install|launch)|Unable to (boot|lookup)|Timed out|Lost connection|Fatal error" \
+            xcodebuild.log | sed "s|$ROOT||" | sort -u | head -25)
+
           # Las banderas -warn-long-* nombran cada función y expresión que pasa
           # de 200 ms. Ordenarlas por milisegundos señala dónde se atasca el
           # inferidor, en lugar de tener que deducirlo.
@@ -125,11 +140,26 @@ jobs:
             echo '```'
             echo "${fallos:-(ninguno)}"
             echo '```'
+            echo "## Caídas y problemas del entorno"
+            echo '```'
+            echo "${caidas:-(ninguna)}"
+            echo '```'
             echo "## Lo más lento de comprobar tipos"
-            echo "Ordenado de mayor a menor. El culpable suele estar arriba."
             echo '```'
             echo "${lentas:-(ninguna)}"
             echo '```'
+
+            # Red de seguridad: si ningún filtro encuentra nada, el resumen
+            # saldría vacío y no diría por qué ha fallado el trabajo. Con la cola
+            # del log siempre hay algo por donde empezar.
+            if [ -z "$errores$fallos$caidas$lentas" ]; then
+              echo "## Ningún filtro encontró nada — cola del log"
+              echo "El fallo no encaja en las categorías de arriba."
+              echo '```'
+              tail -80 xcodebuild.log | sed "s|$ROOT||"
+              echo '```'
+            fi
+
             echo "El log completo va como artefacto \`log-xcodebuild\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -139,6 +169,9 @@ jobs:
           echo ""
           echo "═══════════════ FALLOS DE TEST ═══════════════"
           echo "${fallos:-(ninguno)}"
+          echo ""
+          echo "════════════════ CAÍDAS ════════════════"
+          echo "${caidas:-(ninguna)}"
           echo ""
           echo "═══════ LO MÁS LENTO DE COMPROBAR TIPOS ═══════"
           echo "${lentas:-(ninguna)}"
@@ -195,6 +228,10 @@ jobs:
             echo "No se generó ningún .app."
             exit 1
           fi
+          # Desinstalar primero: si queda un almacén de una ejecución anterior,
+          # la siembra de datos de ejemplo se salta —solo actúa con la base
+          # vacía— y las capturas saldrían con datos viejos o de otro esquema.
+          xcrun simctl uninstall "${{ steps.boot.outputs.udid }}" "$BUNDLE_ID" 2>/dev/null || true
           echo "Instalando $APP"
           xcrun simctl install "${{ steps.boot.outputs.udid }}" "$APP"
 
