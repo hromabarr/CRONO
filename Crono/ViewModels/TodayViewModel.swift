@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Estado derivado y acciones de la pantalla Hoy.
+/// Estado derivado de la pantalla Hoy.
 ///
 /// ## Por qué recibe los hábitos en lugar de consultarlos
 ///
@@ -9,23 +9,27 @@ import Observation
 /// cuando cambia un dato, la vista se redibuja sola. Si este ViewModel hiciera
 /// el `fetch`, habría que refrescarlo a mano tras cada mutación y la reactividad
 /// se perdería. Así que la división es: la vista trae los datos, el ViewModel
-/// deriva y actúa.
+/// deriva.
+///
+/// ## Por qué no guarda el `HabitStore`
+///
+/// Tenerlo obligaba a construir el ViewModel con algo del entorno, que no está
+/// disponible en el `init` de una vista. Eso forzaba un `@State` opcional
+/// desenvuelto con `if let` dentro del `ViewBuilder`, y ese patrón hacía que el
+/// inferidor de tipos de Swift se rindiera al compilar `TodayView`. Sin la
+/// dependencia, el ViewModel se crea directamente en el valor por defecto del
+/// `@State`, igual que `HistoryViewModel`. Las escrituras las pide la vista al
+/// store, que sigue siendo el único punto de mutación.
 @MainActor
 @Observable
 final class TodayViewModel {
-    private let store: HabitStore
     private let calendar: Calendar
 
     /// El día que la pantalla considera "hoy". No es una constante: la app puede
     /// quedarse abierta y cruzar la medianoche.
     private(set) var today: DayKey
 
-    init(
-        store: HabitStore,
-        calendar: Calendar = AppCalendar.current,
-        today: DayKey? = nil
-    ) {
-        self.store = store
+    init(calendar: Calendar = AppCalendar.current, today: DayKey? = nil) {
         self.calendar = calendar
         self.today = today ?? Date.now.dayKey
     }
@@ -94,10 +98,11 @@ final class TodayViewModel {
     }
 
     func progress(for scheduledHabits: [Habit]) -> DayProgress {
-        DayProgress(
-            completed: scheduledHabits.filter { isCompletedToday($0) }.count,
-            total: scheduledHabits.count
-        )
+        var completed = 0
+        for habit in scheduledHabits where isCompletedToday(habit) {
+            completed += 1
+        }
+        return DayProgress(completed: completed, total: scheduledHabits.count)
     }
 
     /// Titular específico del estado. Un texto genérico sirve para todos los
@@ -129,11 +134,7 @@ final class TodayViewModel {
             : "Te quedan \(progress.remaining) hábitos por marcar."
     }
 
-    // MARK: - Acciones
-
-    func toggle(_ habit: Habit) {
-        store.toggleCompletion(for: habit, on: today, today: today)
-    }
+    // MARK: - Accesibilidad
 
     /// Etiqueta de accesibilidad de la fila: estado y acción, porque el relleno
     /// del círculo no se transmite por sí solo a VoiceOver.

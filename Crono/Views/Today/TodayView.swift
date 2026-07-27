@@ -3,11 +3,12 @@ import SwiftUI
 
 /// Pantalla principal: qué toca hoy y cuánto llevas.
 ///
-/// Todo lo que se puede calcular fuera del `body` está fuera. Los cierres de
-/// `ViewBuilder` son el sitio donde más le cuesta trabajar al inferidor de tipos
-/// de Swift: cada declaración local, cada rama y cada comparación con opcionales
-/// que mete ahí multiplica las combinaciones que tiene que resolver, hasta
-/// rendirse con «unable to type-check this expression in reasonable time».
+/// La estructura es deliberadamente idéntica a la de `HistoryView`: un `@State`
+/// con el ViewModel ya construido, sin opcionales y sin `if let` dentro del
+/// `ViewBuilder`. La versión anterior guardaba un `TodayViewModel?` porque el
+/// ViewModel necesitaba el `HabitStore` del entorno, y ese desenvuelto en pleno
+/// `ViewBuilder` era lo que hacía que el inferidor de tipos de Swift se rindiera
+/// al compilar este archivo.
 struct TodayView: View {
     /// Lleva al usuario a la pestaña de gestión desde el estado vacío.
     /// Un botón "Crear hábito" que no navegara a ninguna parte sería peor que
@@ -15,8 +16,7 @@ struct TodayView: View {
     private let onCreateHabit: () -> Void
 
     /// Los hábitos vienen de `@Query`, la fuente reactiva de SwiftData: al
-    /// marcar uno, esta vista se redibuja sola. El ViewModel deriva y actúa,
-    /// pero no consulta.
+    /// marcar uno, esta vista se redibuja sola.
     @Query(
         filter: #Predicate<Habit> { $0.archivedAt == nil },
         sort: [SortDescriptor(\Habit.sortIndex), SortDescriptor(\Habit.createdAt)]
@@ -26,7 +26,7 @@ struct TodayView: View {
     @Environment(HabitStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var viewModel: TodayViewModel?
+    @State private var viewModel = TodayViewModel()
 
     /// Inicializador explícito.
     ///
@@ -42,47 +42,31 @@ struct TodayView: View {
         NavigationStack {
             screen
         }
-        .task(prepareViewModel)
-        .onChange(of: scenePhase, refreshOnActivation)
+        .onChange(of: scenePhase) { _, phase in
+            // Si la app se quedó abierta y cruzó la medianoche, "hoy" apunta a
+            // ayer y la lista mostraría las marcas equivocadas.
+            if phase == .active {
+                viewModel.refreshToday()
+            }
+        }
     }
 
     private var screen: some View {
-        container
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle(Text("Hoy"))
-            .navigationBarTitleDisplayMode(.large)
+        TodayContent(
+            viewModel: viewModel,
+            habits: activeHabits,
+            onToggle: toggle,
+            onCreateHabit: onCreateHabit
+        )
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle(Text("Hoy"))
+        .navigationBarTitleDisplayMode(.large)
     }
 
-    @ViewBuilder
-    private var container: some View {
-        if let viewModel {
-            TodayContent(
-                viewModel: viewModel,
-                habits: activeHabits,
-                onCreateHabit: onCreateHabit
-            )
-        } else {
-            // Ventana de un solo fotograma antes de que `task` construya el
-            // ViewModel con el store del entorno.
-            Color(uiColor: .systemGroupedBackground)
-        }
-    }
-
-    /// Las acciones son métodos con nombre en lugar de cierres en línea: así los
-    /// modificadores del `body` quedan con una sola forma posible.
-    @Sendable
-    private func prepareViewModel() async {
-        if viewModel == nil {
-            viewModel = TodayViewModel(store: store)
-        }
-    }
-
-    private func refreshOnActivation(_ old: ScenePhase, _ new: ScenePhase) {
-        // Si la app se quedó abierta y cruzó la medianoche, "hoy" apunta a ayer
-        // y la lista mostraría las marcas equivocadas.
-        if new == .active {
-            viewModel?.refreshToday()
-        }
+    /// La escritura la pide la vista al store, que sigue siendo el único punto
+    /// de mutación de los datos. El ViewModel solo deriva.
+    private func toggle(_ habit: Habit) {
+        store.toggleCompletion(for: habit, on: viewModel.today, today: viewModel.today)
     }
 }
 
@@ -91,6 +75,7 @@ struct TodayView: View {
 private struct TodayContent: View {
     let viewModel: TodayViewModel
     let habits: [Habit]
+    let onToggle: (Habit) -> Void
     let onCreateHabit: () -> Void
 
     /// Fuera del `body`: una declaración local dentro de un `ViewBuilder` es una
@@ -107,7 +92,11 @@ private struct TodayContent: View {
             filling { EmptyStateView.nothingToday }
         } else {
             ScrollView {
-                TodayScrollContent(viewModel: viewModel, scheduled: scheduled)
+                TodayScrollContent(
+                    viewModel: viewModel,
+                    scheduled: scheduled,
+                    onToggle: onToggle
+                )
             }
         }
     }
@@ -120,6 +109,7 @@ private struct TodayContent: View {
 private struct TodayScrollContent: View {
     let viewModel: TodayViewModel
     let scheduled: [Habit]
+    let onToggle: (Habit) -> Void
 
     private var progress: TodayViewModel.DayProgress {
         viewModel.progress(for: scheduled)
@@ -130,7 +120,11 @@ private struct TodayScrollContent: View {
             dateHeader
             summary
             SectionLabel("Hábitos de hoy")
-            TodayHabitsCard(viewModel: viewModel, habits: scheduled)
+            TodayHabitsCard(
+                viewModel: viewModel,
+                habits: scheduled,
+                onToggle: onToggle
+            )
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
@@ -157,6 +151,7 @@ private struct TodayScrollContent: View {
 private struct TodayHabitsCard: View {
     let viewModel: TodayViewModel
     let habits: [Habit]
+    let onToggle: (Habit) -> Void
 
     /// Fila ya resuelta: se sabe de antemano si lleva separador delante.
     ///
@@ -196,7 +191,7 @@ private struct TodayHabitsCard: View {
             isCompleted: viewModel.isCompletedToday(habit),
             accessibilityLabel: viewModel.accessibilityLabel(for: habit),
             accessibilityHint: viewModel.accessibilityHint(for: habit),
-            onToggle: { viewModel.toggle(habit) }
+            onToggle: { onToggle(habit) }
         )
         .padding(.horizontal, 16)
     }
