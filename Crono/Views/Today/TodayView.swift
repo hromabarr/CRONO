@@ -127,25 +127,34 @@ private struct TodayHabitsCard: View {
     let viewModel: TodayViewModel
     let habits: [Habit]
 
+    private var firstID: UUID? { habits.first?.id }
+
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(Array(habits.enumerated()), id: \.element.id) { index, habit in
-                HabitRowView(
-                    habit: habit,
-                    isCompleted: viewModel.isCompletedToday(habit),
-                    accessibilityLabel: viewModel.accessibilityLabel(for: habit),
-                    accessibilityHint: viewModel.accessibilityHint(for: habit),
-                    onToggle: { viewModel.toggle(habit) }
-                )
-                .padding(.horizontal, 16)
-
-                if index < habits.count - 1 {
+            ForEach(habits) { habit in
+                // Separador delante de todas menos la primera: así no hace falta
+                // el índice, y con él desaparece el `Array(...enumerated())` con
+                // `id:` por key path que atascaba al inferidor de tipos.
+                if habit.id != firstID {
                     Divider().padding(.leading, 58)
                 }
+
+                row(habit)
             }
         }
         .padding(.vertical, 6)
         .groupedCard()
+    }
+
+    private func row(_ habit: Habit) -> some View {
+        HabitRowView(
+            habit: habit,
+            isCompleted: viewModel.isCompletedToday(habit),
+            accessibilityLabel: viewModel.accessibilityLabel(for: habit),
+            accessibilityHint: viewModel.accessibilityHint(for: habit),
+            onToggle: { viewModel.toggle(habit) }
+        )
+        .padding(.horizontal, 16)
     }
 }
 

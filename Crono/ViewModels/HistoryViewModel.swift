@@ -194,11 +194,24 @@ final class HistoryViewModel {
         )
     }
 
+    /// Racha actual de un hábito, lista para dibujar.
+    ///
+    /// Es un tipo con nombre y no una tupla `(habit:streak:)` a propósito: una
+    /// tupla con etiquetas atravesando un `ForEach` con `id:` por key path hacía
+    /// que el inferidor de tipos de Swift se rindiera al compilar la vista. Con
+    /// un `Identifiable` de verdad, el `ForEach` no tiene nada que deducir.
+    struct StreakEntry: Identifiable {
+        let habit: Habit
+        let streak: Int
+
+        var id: UUID { habit.id }
+    }
+
     /// Racha actual de cada hábito, de mayor a menor.
-    func streaks(for habits: [Habit]) -> [(habit: Habit, streak: Int)] {
+    func streaks(for habits: [Habit]) -> [StreakEntry] {
         habits
             .filter(\.isActive)
-            .map { (habit: $0, streak: calculator.currentStreak(for: $0, today: today)) }
+            .map { StreakEntry(habit: $0, streak: calculator.currentStreak(for: $0, today: today)) }
             .sorted { $0.streak > $1.streak }
     }
 

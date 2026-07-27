@@ -72,24 +72,24 @@ struct CalendarDayCell: View {
 }
 
 #Preview("Celdas", traits: .sizeThatFitsLayout) {
-    let states: [(HistoryViewModel.DayState, Double, Int?)] = [
-        (.past, 0, 3), (.past, 0.33, 4), (.past, 0.66, 5),
-        (.past, 1, 6), (.today, 0.4, 27), (.future, 0, 28), (.blank, 0, nil)
+    // Las celdas se construyen directamente como `DayCell`, que ya es
+    // `Identifiable`. Un array de tuplas recorrido con `enumerated()` obliga al
+    // inferidor de tipos a un trabajo desproporcionado para una
+    // previsualización, y las previsualizaciones también se compilan.
+    let cells: [HistoryViewModel.DayCell] = [
+        .init(id: 0, dayKey: 20_260_703, dayNumber: 3, fraction: 0, state: .past),
+        .init(id: 1, dayKey: 20_260_704, dayNumber: 4, fraction: 0.33, state: .past),
+        .init(id: 2, dayKey: 20_260_705, dayNumber: 5, fraction: 0.66, state: .past),
+        .init(id: 3, dayKey: 20_260_706, dayNumber: 6, fraction: 1, state: .past),
+        .init(id: 4, dayKey: 20_260_727, dayNumber: 27, fraction: 0.4, state: .today),
+        .init(id: 5, dayKey: 20_260_728, dayNumber: 28, fraction: 0, state: .future),
+        .init(id: 6, dayKey: nil, dayNumber: nil, fraction: 0, state: .blank)
     ]
 
     HStack(spacing: 8) {
-        ForEach(Array(states.enumerated()), id: \.offset) { index, item in
-            CalendarDayCell(
-                cell: .init(
-                    id: index,
-                    dayKey: item.2 == nil ? nil : 20_260_700 + item.2!,
-                    dayNumber: item.2,
-                    fraction: item.1,
-                    state: item.0
-                ),
-                accessibilityLabel: nil
-            )
-            .frame(width: 42)
+        ForEach(cells) { cell in
+            CalendarDayCell(cell: cell, accessibilityLabel: nil)
+                .frame(width: 42)
         }
     }
     .padding()

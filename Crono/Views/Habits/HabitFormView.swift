@@ -62,18 +62,23 @@ struct HabitFormView: View {
     // MARK: - Secciones
 
     private var nameSection: some View {
-        Section("Nombre") {
+        // Cabeceras explícitas en lugar de `Section("Nombre")`: la forma corta
+        // deja al inferidor eligiendo entre las sobrecargas de
+        // `LocalizedStringKey` y `StringProtocol` dentro de un `Form` genérico.
+        Section {
             TextField("Nombre del hábito", text: $viewModel.name)
                 .textInputAutocapitalization(.sentences)
 
             TextField("Descripción (opcional)", text: $viewModel.notes, axis: .vertical)
                 .lineLimit(1...3)
                 .textInputAutocapitalization(.sentences)
+        } header: {
+            Text("Nombre")
         }
     }
 
     private var colorSection: some View {
-        Section("Color") {
+        Section {
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 8),
                 spacing: 12
@@ -83,6 +88,8 @@ struct HabitFormView: View {
                 }
             }
             .padding(.vertical, 4)
+        } header: {
+            Text("Color")
         }
     }
 

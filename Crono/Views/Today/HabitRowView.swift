@@ -60,12 +60,18 @@ struct HabitRowView: View {
 #Preview("Filas") {
     let container = PreviewData.container()
     let habits = (try? container.mainContext.fetch(FetchDescriptor<Habit>())) ?? []
+    let sample = Array(habits.prefix(4))
 
     List {
-        ForEach(Array(habits.prefix(4).enumerated()), id: \.element.id) { index, habit in
+        ForEach(sample) { habit in
             HabitRowView(
                 habit: habit,
-                isCompleted: index.isMultiple(of: 2),
+                // Se alternan marcados y sin marcar buscando la posición por
+                // `id`, sin `enumerated()` ni `firstIndex(of:)`: el primero le
+                // cuesta al inferidor más de lo que vale y el segundo exigiría
+                // que `Habit` fuese `Equatable`, que en una clase `@Model` no
+                // está garantizado.
+                isCompleted: (sample.firstIndex { $0.id == habit.id } ?? 0).isMultiple(of: 2),
                 accessibilityLabel: habit.name,
                 accessibilityHint: "Toca para marcar",
                 onToggle: {}

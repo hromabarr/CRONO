@@ -100,17 +100,23 @@ private struct HistoryContent: View {
 }
 
 private struct StreakListCard: View {
-    let entries: [(habit: Habit, streak: Int)]
+    let entries: [HistoryViewModel.StreakEntry]
+
+    private var firstID: UUID? { entries.first?.id }
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(Array(entries.enumerated()), id: \.element.habit.id) { index, entry in
-                HabitStreakRow(habit: entry.habit, streak: entry.streak)
-                    .padding(.horizontal, 16)
-
-                if index < entries.count - 1 {
+            ForEach(entries) { entry in
+                // El separador va delante de cada fila salvo la primera, en vez
+                // de detrás de todas menos la última. Es el mismo resultado
+                // visual, pero evita necesitar el índice y con ello el
+                // `Array(...enumerated())` que atascaba al compilador.
+                if entry.id != firstID {
                     Divider().padding(.leading, 42)
                 }
+
+                HabitStreakRow(habit: entry.habit, streak: entry.streak)
+                    .padding(.horizontal, 16)
             }
         }
         .padding(.vertical, 6)

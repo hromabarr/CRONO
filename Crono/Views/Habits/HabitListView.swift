@@ -81,22 +81,31 @@ private struct ActiveHabitsSection: View {
     let onEdit: (Habit) -> Void
 
     var body: some View {
-        Section("Activos") {
+        Section {
             ForEach(habits) { habit in
-                ActiveHabitRow(habit: habit, onEdit: { onEdit(habit) })
-                    .swipeActions(edge: .trailing) {
-                        Button {
-                            store.archive(habit)
-                        } label: {
-                            Label("Archivar", systemImage: "archivebox")
-                        }
-                        .tint(.orange)
-                    }
+                row(habit)
             }
             .onMove { source, destination in
                 store.move(habits, from: source, to: destination)
             }
+        } header: {
+            // Cabecera explícita en lugar de `Section("Activos")`: la forma
+            // corta obliga al inferidor a elegir entre las sobrecargas de
+            // `LocalizedStringKey` y `StringProtocol`.
+            Text("Activos")
         }
+    }
+
+    private func row(_ habit: Habit) -> some View {
+        ActiveHabitRow(habit: habit, onEdit: { onEdit(habit) })
+            .swipeActions(edge: .trailing) {
+                Button {
+                    store.archive(habit)
+                } label: {
+                    Label(text: "Archivar", systemImage: "archivebox")
+                }
+                .tint(.orange)
+            }
     }
 }
 
@@ -138,27 +147,34 @@ private struct ArchivedHabitsSection: View {
     var body: some View {
         Section {
             ForEach(habits) { habit in
-                ArchivedHabitRow(habit: habit)
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            store.delete(habit)
-                        } label: {
-                            Label("Eliminar", systemImage: "trash")
-                        }
-
-                        Button {
-                            store.unarchive(habit)
-                        } label: {
-                            Label("Reactivar", systemImage: "arrow.uturn.backward")
-                        }
-                        .tint(.blue)
-                    }
+                row(habit)
             }
         } header: {
             Text("Archivados")
         } footer: {
             Text("Conservan su historial. Desliza para reactivarlos o eliminarlos.")
         }
+    }
+
+    /// Extraída de la `Section` a propósito: dos botones con etiqueta dentro de
+    /// `swipeActions`, y todo ello anidado en un `Section` genérico de tres
+    /// cierres, era demasiado para el inferidor de tipos.
+    private func row(_ habit: Habit) -> some View {
+        ArchivedHabitRow(habit: habit)
+            .swipeActions(edge: .trailing) {
+                Button(role: .destructive) {
+                    store.delete(habit)
+                } label: {
+                    Label(text: "Eliminar", systemImage: "trash")
+                }
+
+                Button {
+                    store.unarchive(habit)
+                } label: {
+                    Label(text: "Reactivar", systemImage: "arrow.uturn.backward")
+                }
+                .tint(.blue)
+            }
     }
 }
 
