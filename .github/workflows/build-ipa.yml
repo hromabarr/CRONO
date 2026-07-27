@@ -1,0 +1,209 @@
+name: Compilar
+
+# Se lanza a mano desde la pestaña Actions. No se compila en cada push: los
+# minutos de runner macOS son caros y esto solo hace falta cuando quieres
+# instalar una versión nueva o ver cómo ha quedado.
+on:
+  workflow_dispatch:
+    inputs:
+      capturas:
+        description: "Generar capturas del simulador"
+        type: boolean
+        default: true
+      ipa:
+        description: "Generar el .ipa para instalar en el móvil"
+        type: boolean
+        default: true
+
+env:
+  BUNDLE_ID: com.xilgar.habittracker
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # Tests. Se ejecutan siempre y bloquean lo demás: si la lógica de
+  # rachas está rota, no tiene sentido producir un .ipa ni capturas.
+  # ─────────────────────────────────────────────────────────────
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    outputs:
+      simulator: ${{ steps.sim.outputs.udid }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Nunca falla: solo deja en el log qué SDK hay, para que si el build
+      # peta por la versión de iOS sepas de un vistazo por qué.
+      - name: Entorno disponible
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i iphoneos || true
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Elegir un simulador disponible
+        id: sim
+        run: |
+          # No se fija "iPhone 16" a pelo: el catálogo de simuladores cambia
+          # con cada imagen del runner y un nombre inventado rompe el build.
+          UDID=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[][] | select(.name | test("^iPhone"))] | .[-1].udid')
+          NAME=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[][] | select(.name | test("^iPhone"))] | .[-1].name')
+          if [ -z "$UDID" ] || [ "$UDID" = "null" ]; then
+            echo "No hay simuladores de iPhone en este runner."
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "Usando $NAME ($UDID)"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Ejecutar los tests
+        run: |
+          xcodebuild test \
+            -project HabitTracker.xcodeproj \
+            -scheme HabitTracker \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            CODE_SIGNING_ALLOWED=NO
+
+  # ─────────────────────────────────────────────────────────────
+  # Capturas reales de la app corriendo en el simulador.
+  # ─────────────────────────────────────────────────────────────
+  capturas:
+    needs: test
+    if: inputs.capturas
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Compilar para el simulador
+        run: |
+          xcodebuild build \
+            -project HabitTracker.xcodeproj \
+            -scheme HabitTracker \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Arrancar el simulador
+        id: boot
+        run: |
+          UDID=$(xcrun simctl list devices available -j \
+            | jq -r '[.devices[][] | select(.name | test("^iPhone"))] | .[-1].udid')
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+
+      - name: Instalar la app
+        run: |
+          APP=$(find build/Build/Products/Debug-iphonesimulator -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then
+            echo "No se generó ningún .app."
+            exit 1
+          fi
+          echo "Instalando $APP"
+          xcrun simctl install "${{ steps.boot.outputs.udid }}" "$APP"
+
+      - name: Capturar las pantallas
+        run: |
+          UDID="${{ steps.boot.outputs.udid }}"
+          mkdir -p capturas
+
+          for apariencia in light dark; do
+            xcrun simctl ui "$UDID" appearance "$apariencia"
+
+            for pestana in today history habits; do
+              # Terminar antes de relanzar: sin esto, simctl reactiva la
+              # instancia existente y los argumentos nuevos se ignoran, así
+              # que las tres capturas saldrían de la misma pestaña.
+              xcrun simctl terminate "$UDID" "$BUNDLE_ID" 2>/dev/null || true
+              sleep 1
+
+              xcrun simctl launch "$UDID" "$BUNDLE_ID" \
+                -seedSampleData -startTab "$pestana"
+
+              # Margen para que SwiftData siembre los datos la primera vez y
+              # para que terminen las animaciones de entrada.
+              sleep 6
+
+              xcrun simctl io "$UDID" screenshot "capturas/${apariencia}-${pestana}.png"
+              echo "Capturada ${apariencia}-${pestana}.png"
+            done
+          done
+
+          ls -lh capturas
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: capturas-simulador
+          path: capturas/
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────
+  # .ipa sin firmar, para instalar con Sideloadly.
+  # ─────────────────────────────────────────────────────────────
+  ipa:
+    needs: test
+    if: inputs.ipa
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar XcodeGen
+        run: brew install xcodegen
+
+      - name: Generar el proyecto
+        run: xcodegen generate
+
+      - name: Compilar sin firmar
+        # Sideloadly vuelve a firmar la app con tu Apple ID, así que aquí se
+        # compila deliberadamente sin certificado: no hace falta ninguno.
+        run: |
+          xcodebuild build \
+            -project HabitTracker.xcodeproj \
+            -scheme HabitTracker \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            ONLY_ACTIVE_ARCH=NO
+
+      # Un .ipa no es más que un zip con la app dentro de una carpeta llamada
+      # Payload. Al no estar firmada no sirve `xcodebuild exportArchive`:
+      # hay que empaquetarlo a mano.
+      - name: Empaquetar el .ipa
+        run: |
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then
+            echo "No se generó ningún .app; revisa el paso de compilación."
+            exit 1
+          fi
+          echo "Empaquetando $APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry Habitos-sin-firmar.ipa Payload
+          ls -lh Habitos-sin-firmar.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Habitos-ipa
+          path: Habitos-sin-firmar.ipa
+          retention-days: 30

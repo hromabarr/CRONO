@@ -1,0 +1,1669 @@
+<title>Hábitos — maqueta de interfaz</title>
+
+<style>
+  /* ============================================================
+     TOKENS — paleta del sistema iOS, no una paleta inventada.
+     El tema se resuelve en tres capas: valores claros por defecto,
+     oscuros por preferencia del sistema, y [data-theme] por encima
+     de ambos para que el conmutador gane en las dos direcciones.
+     ============================================================ */
+  :root {
+    color-scheme: light dark;
+
+    /* Fondos del sistema */
+    --bg-grouped: #f2f2f7;
+    --bg-card: #ffffff;
+    --bg-card-alt: #ffffff;
+    --bg-chrome: rgba(249, 249, 251, 0.82);
+    --bg-fill: rgba(120, 120, 128, 0.12);
+    --bg-fill-strong: rgba(120, 120, 128, 0.2);
+
+    /* Etiquetas */
+    --label: #000000;
+    --label-2: rgba(60, 60, 67, 0.6);
+    --label-3: rgba(60, 60, 67, 0.3);
+    --separator: rgba(60, 60, 67, 0.29);
+    --hairline: rgba(60, 60, 67, 0.18);
+
+    /* Acento */
+    --accent: #007aff;
+
+    /* Colores de hábito */
+    --h-red: #ff3b30;
+    --h-orange: #ff9500;
+    --h-yellow: #ffcc00;
+    --h-green: #34c759;
+    --h-teal: #30b0c7;
+    --h-blue: #007aff;
+    --h-indigo: #5856d6;
+    --h-purple: #af52de;
+
+    /* Escenario alrededor de los teléfonos: neutro con sesgo hacia el
+       azul del acento, para que no lea como gris por defecto. */
+    --stage: #dfe1e8;
+    --stage-label: #3f4351;
+    --stage-label-2: #6b7186;
+    --stage-line: rgba(63, 67, 81, 0.16);
+    --bezel: #1a1b20;
+    --bezel-edge: rgba(255, 255, 255, 0.14);
+
+    /* Escala de tipos iOS (puntos → px 1:1 en la maqueta) */
+    --t-large-title: 34px;
+    --t-title2: 22px;
+    --t-title3: 20px;
+    --t-body: 17px;
+    --t-subhead: 15px;
+    --t-footnote: 13px;
+    --t-caption: 12px;
+    --t-caption2: 11px;
+
+    /* Muelle crítico: response ≈0.4, sin sobreoscilación */
+    --spring: 400ms cubic-bezier(0.22, 1, 0.36, 1);
+    --spring-fast: 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-grouped: #000000;
+      --bg-card: #1c1c1e;
+      --bg-card-alt: #2c2c2e;
+      --bg-chrome: rgba(28, 28, 30, 0.78);
+      --bg-fill: rgba(120, 120, 128, 0.24);
+      --bg-fill-strong: rgba(120, 120, 128, 0.36);
+
+      --label: #ffffff;
+      --label-2: rgba(235, 235, 245, 0.6);
+      --label-3: rgba(235, 235, 245, 0.3);
+      --separator: rgba(84, 84, 88, 0.65);
+      --hairline: rgba(84, 84, 88, 0.45);
+
+      --accent: #0a84ff;
+
+      --h-red: #ff453a;
+      --h-orange: #ff9f0a;
+      --h-yellow: #ffd60a;
+      --h-green: #30d158;
+      --h-teal: #40c8e0;
+      --h-blue: #0a84ff;
+      --h-indigo: #5e5ce6;
+      --h-purple: #bf5af2;
+
+      --stage: #101116;
+      --stage-label: #d7dae4;
+      --stage-label-2: #8a90a3;
+      --stage-line: rgba(215, 218, 228, 0.14);
+      --bezel: #000000;
+      --bezel-edge: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg-grouped: #000000;
+    --bg-card: #1c1c1e;
+    --bg-card-alt: #2c2c2e;
+    --bg-chrome: rgba(28, 28, 30, 0.78);
+    --bg-fill: rgba(120, 120, 128, 0.24);
+    --bg-fill-strong: rgba(120, 120, 128, 0.36);
+    --label: #ffffff;
+    --label-2: rgba(235, 235, 245, 0.6);
+    --label-3: rgba(235, 235, 245, 0.3);
+    --separator: rgba(84, 84, 88, 0.65);
+    --hairline: rgba(84, 84, 88, 0.45);
+    --accent: #0a84ff;
+    --h-red: #ff453a;
+    --h-orange: #ff9f0a;
+    --h-yellow: #ffd60a;
+    --h-green: #30d158;
+    --h-teal: #40c8e0;
+    --h-blue: #0a84ff;
+    --h-indigo: #5e5ce6;
+    --h-purple: #bf5af2;
+    --stage: #101116;
+    --stage-label: #d7dae4;
+    --stage-label-2: #8a90a3;
+    --stage-line: rgba(215, 218, 228, 0.14);
+    --bezel: #000000;
+    --bezel-edge: rgba(255, 255, 255, 0.1);
+  }
+
+  :root[data-theme="light"] {
+    --bg-grouped: #f2f2f7;
+    --bg-card: #ffffff;
+    --bg-card-alt: #ffffff;
+    --bg-chrome: rgba(249, 249, 251, 0.82);
+    --bg-fill: rgba(120, 120, 128, 0.12);
+    --bg-fill-strong: rgba(120, 120, 128, 0.2);
+    --label: #000000;
+    --label-2: rgba(60, 60, 67, 0.6);
+    --label-3: rgba(60, 60, 67, 0.3);
+    --separator: rgba(60, 60, 67, 0.29);
+    --hairline: rgba(60, 60, 67, 0.18);
+    --accent: #007aff;
+    --h-red: #ff3b30;
+    --h-orange: #ff9500;
+    --h-yellow: #ffcc00;
+    --h-green: #34c759;
+    --h-teal: #30b0c7;
+    --h-blue: #007aff;
+    --h-indigo: #5856d6;
+    --h-purple: #af52de;
+    --stage: #dfe1e8;
+    --stage-label: #3f4351;
+    --stage-label-2: #6b7186;
+    --stage-line: rgba(63, 67, 81, 0.16);
+    --bezel: #1a1b20;
+    --bezel-edge: rgba(255, 255, 255, 0.14);
+  }
+
+  /* ============================================================
+     ESCENARIO
+     ============================================================ */
+  body {
+    margin: 0;
+    /* Pila del sistema: en macOS/iOS resuelve a SF Pro. En Windows cae
+       en Segoe UI Variable, que es la diferencia visual más grande
+       entre esta maqueta y el render real. */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    background: var(--stage);
+    color: var(--stage-label);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page-head {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .page-head h1 {
+    margin: 0;
+    font-size: clamp(22px, 3.4vw, 30px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: var(--stage-label);
+  }
+
+  .page-head p {
+    margin: 8px 0 0;
+    max-width: 62ch;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--stage-label-2);
+  }
+
+  .theme-switch {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: 10px;
+    background: var(--bg-fill);
+    border: 1px solid var(--stage-line);
+  }
+
+  .theme-switch button {
+    appearance: none;
+    border: 0;
+    cursor: pointer;
+    padding: 6px 13px;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--stage-label-2);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background var(--spring-fast), color var(--spring-fast);
+  }
+
+  .theme-switch button[aria-pressed="true"] {
+    background: var(--bg-card);
+    color: var(--stage-label);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+  }
+
+  .theme-switch button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Los teléfonos son de 393 pt de ancho fijo, la geometría real de un
+     iPhone 16. Se desplazan en su propio contenedor para que el cuerpo
+     de la página nunca haga scroll horizontal. */
+  .stage {
+    display: flex;
+    gap: 34px;
+    align-items: flex-start;
+    overflow-x: auto;
+    padding: 28px 24px 56px;
+    scroll-snap-type: x proximity;
+  }
+
+  .device {
+    margin: 0;
+    flex: 0 0 auto;
+    scroll-snap-align: center;
+  }
+
+  .device figcaption {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stage-label-2);
+    padding: 0 4px 11px;
+  }
+
+  .bezel {
+    width: 393px;
+    height: 852px;
+    border-radius: 56px;
+    padding: 11px;
+    background: var(--bezel);
+    box-shadow:
+      0 0 0 1px var(--bezel-edge) inset,
+      0 26px 60px -18px rgba(0, 0, 0, 0.55);
+  }
+
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 46px;
+    overflow: hidden;
+    background: var(--bg-grouped);
+    color: var(--label);
+    font-size: var(--t-body);
+    display: flex;
+    flex-direction: column;
+    isolation: isolate;
+  }
+
+  /* ============================================================
+     CROMO: barra de estado, barra de navegación, barra de pestañas
+     ============================================================ */
+  .statusbar {
+    flex: 0 0 auto;
+    height: 54px;
+    padding: 16px 32px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--t-subhead);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    z-index: 3;
+  }
+
+  .statusbar .glyphs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 11px;
+  }
+
+  .bars i {
+    width: 3px;
+    background: currentColor;
+    border-radius: 1px;
+  }
+
+  .bars i:nth-child(1) { height: 4px; }
+  .bars i:nth-child(2) { height: 6px; }
+  .bars i:nth-child(3) { height: 9px; }
+  .bars i:nth-child(4) { height: 11px; }
+
+  .battery {
+    width: 24px;
+    height: 12px;
+    border: 1.5px solid currentColor;
+    border-radius: 3.5px;
+    padding: 1.5px;
+    opacity: 0.9;
+  }
+
+  .battery span {
+    display: block;
+    height: 100%;
+    width: 74%;
+    background: currentColor;
+    border-radius: 1.5px;
+  }
+
+  /* El contenido se desplaza por debajo del cromo translúcido. */
+  .scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 20px 108px;
+    scrollbar-width: none;
+  }
+
+  .scroll::-webkit-scrollbar { display: none; }
+
+  .navbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0 12px;
+  }
+
+  .navbar h2 {
+    margin: 0;
+    /* Título grande: tracking negativo, interlineado ajustado. */
+    font-size: var(--t-large-title);
+    line-height: 1.06;
+    letter-spacing: -0.028em;
+    font-weight: 700;
+  }
+
+  .navbar .subtitle {
+    display: block;
+    margin-top: 3px;
+    font-size: var(--t-subhead);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: var(--label-2);
+    text-transform: capitalize;
+  }
+
+  .nav-action {
+    appearance: none;
+    border: 0;
+    background: var(--bg-fill);
+    color: var(--accent);
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    font-size: 21px;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    margin-bottom: 5px;
+    transition: transform var(--spring-fast), background var(--spring-fast);
+  }
+
+  .nav-action:active { transform: scale(0.9); }
+
+  .nav-action:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Barra de pestañas translúcida: material flotante, no una franja
+     opaca que se coma el alto de la pantalla. */
+  .tabbar {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: 3;
+    display: flex;
+    padding: 9px 12px 26px;
+    background: var(--bg-chrome);
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border-top: 1px solid var(--hairline);
+  }
+
+  .tabbar button {
+    appearance: none;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 0;
+    color: var(--label-2);
+    font: inherit;
+    font-size: var(--t-caption2);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: color var(--spring-fast);
+  }
+
+  .tabbar button[aria-selected="true"] { color: var(--accent); }
+
+  .tabbar button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+
+  .tabbar svg {
+    width: 26px;
+    height: 26px;
+    transition: transform var(--spring-fast);
+  }
+
+  .tabbar button:active svg { transform: scale(0.88); }
+
+  /* Indicador inferior */
+  .home-indicator {
+    position: absolute;
+    z-index: 4;
+    bottom: 9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--label);
+    opacity: 0.28;
+  }
+
+  /* ============================================================
+     LISTAS AGRUPADAS
+     ============================================================ */
+  .section-label {
+    font-size: var(--t-footnote);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--label-2);
+    padding: 22px 4px 8px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    min-height: 44px; /* objetivo táctil mínimo */
+    position: relative;
+  }
+
+  .row + .row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 0;
+    height: 1px;
+    background: var(--separator);
+    transform: scaleY(0.5);
+  }
+
+  /* El separador arranca después del control, como en iOS. */
+  .card.inset-separators .row + .row::before { left: 58px; }
+
+  .row-text { flex: 1 1 auto; min-width: 0; }
+
+  .row-title {
+    font-size: var(--t-body);
+    letter-spacing: -0.014em;
+    line-height: 1.25;
+  }
+
+  .row-sub {
+    margin-top: 2px;
+    font-size: var(--t-footnote);
+    letter-spacing: -0.005em;
+    color: var(--label-2);
+    line-height: 1.3;
+  }
+
+  .chevron {
+    flex: 0 0 auto;
+    color: var(--label-3);
+    font-size: 15px;
+  }
+
+  .dot {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--habit);
+  }
+
+  /* ============================================================
+     TOGGLE DE COMPLECIÓN
+     El estado no lo lleva solo el color: el círculo se rellena y
+     aparece una marca. Legible con daltonismo y en escala de grises.
+     ============================================================ */
+  .toggle {
+    appearance: none;
+    border: 0;
+    background: none;
+    padding: 0;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    margin: -6px 0 -6px -6px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -6px;
+    border-radius: 50%;
+  }
+
+  .toggle .well {
+    width: 29px;
+    height: 29px;
+    border-radius: 50%;
+    border: 2px solid var(--habit);
+    display: grid;
+    place-items: center;
+    /* Sin sobreoscilación al asentarse; la escala de :active da el
+       acuse inmediato en el pointer-down. */
+    transition:
+      background var(--spring-fast),
+      border-color var(--spring-fast),
+      transform var(--spring-fast);
+  }
+
+  .toggle:active .well { transform: scale(0.86); }
+
+  .toggle .well svg {
+    width: 17px;
+    height: 17px;
+    color: #fff;
+    opacity: 0;
+    transform: scale(0.4);
+    transition: opacity 180ms ease-out, transform var(--spring);
+  }
+
+  .toggle[aria-pressed="true"] .well { background: var(--habit); }
+  .toggle[aria-pressed="true"] .well svg { opacity: 1; transform: scale(1); }
+
+  .toggle[aria-pressed="true"] + .row-text .row-title {
+    color: var(--label-2);
+  }
+
+  /* ============================================================
+     ANILLO DE PROGRESO
+     ============================================================ */
+  .ring-card {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 22px 20px;
+    background: var(--bg-card);
+    border-radius: 22px;
+    margin-top: 4px;
+  }
+
+  .ring {
+    flex: 0 0 auto;
+    width: 116px;
+    height: 116px;
+    position: relative;
+  }
+
+  .ring svg { transform: rotate(-90deg); display: block; }
+
+  .ring .track { stroke: var(--bg-fill-strong); }
+
+  .ring .fill {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    transition: stroke-dashoffset var(--spring);
+  }
+
+  .ring-value {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    text-align: center;
+  }
+
+  .ring-value b {
+    display: block;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .ring-value span {
+    display: block;
+    margin-top: 3px;
+    font-size: var(--t-caption2);
+    font-weight: 500;
+    color: var(--label-2);
+  }
+
+  .ring-copy h3 {
+    margin: 0;
+    font-size: var(--t-title3);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .ring-copy p {
+    margin: 5px 0 0;
+    font-size: var(--t-subhead);
+    line-height: 1.4;
+    color: var(--label-2);
+  }
+
+  /* ============================================================
+     CALENDARIO
+     ============================================================ */
+  .month-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 4px 12px;
+  }
+
+  .month-head strong {
+    font-size: var(--t-title3);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-transform: capitalize;
+  }
+
+  .month-nav { display: flex; gap: 6px; }
+
+  .month-nav button {
+    appearance: none;
+    border: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-fill);
+    color: var(--accent);
+    cursor: pointer;
+    font: inherit;
+    font-size: 15px;
+    transition: transform var(--spring-fast);
+  }
+
+  .month-nav button:active { transform: scale(0.88); }
+
+  .month-nav button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .weekday-head,
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .weekday-head div {
+    text-align: center;
+    font-size: var(--t-caption2);
+    font-weight: 600;
+    color: var(--label-2);
+    padding-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .day {
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+    position: relative;
+    font-size: var(--t-footnote);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    color: var(--label);
+  }
+
+  /* El arco codifica la fracción de hábitos cumplidos ese día. */
+  .day[data-progress]::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: conic-gradient(
+      var(--accent) calc(var(--p) * 1turn),
+      var(--bg-fill) 0
+    );
+  }
+
+  .day[data-progress]::after {
+    content: "";
+    position: absolute;
+    inset: 5.5px;
+    border-radius: 50%;
+    background: var(--bg-card);
+  }
+
+  .day span { position: relative; z-index: 1; }
+
+  .day.is-empty { color: transparent; }
+
+  .day.is-future { color: var(--label-3); }
+
+  .day.is-today span {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .day.is-perfect span { color: var(--label); font-weight: 600; }
+
+  /* ============================================================
+     ESTADÍSTICAS
+     ============================================================ */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .stat {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+
+  .stat b {
+    display: block;
+    font-size: var(--t-title2);
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .stat span {
+    display: block;
+    margin-top: 4px;
+    font-size: var(--t-caption2);
+    font-weight: 500;
+    color: var(--label-2);
+    line-height: 1.25;
+  }
+
+  .streak {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px 3px 7px;
+    border-radius: 999px;
+    background: var(--bg-fill);
+    font-size: var(--t-caption);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--label-2);
+  }
+
+  .streak svg { width: 12px; height: 12px; color: var(--h-orange); }
+
+  /* ============================================================
+     HOJA MODAL
+     Tarea modal: material + atenuación del fondo, que además se
+     empuja hacia atrás para que la jerarquía sea física.
+     ============================================================ */
+  .sheet-host { position: relative; }
+
+  .sheet-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background: rgba(0, 0, 0, 0.36);
+  }
+
+  .behind {
+    transform: scale(0.94) translateY(-14px);
+    border-radius: 22px;
+    overflow: hidden;
+    transform-origin: top center;
+    filter: saturate(0.85);
+  }
+
+  .sheet {
+    position: absolute;
+    z-index: 6;
+    inset: 62px 0 0 0;
+    background: var(--bg-grouped);
+    border-radius: 14px 14px 0 0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 10px;
+    font-size: var(--t-body);
+    letter-spacing: -0.014em;
+  }
+
+  .sheet-bar strong { font-weight: 600; }
+  .sheet-bar .cancel { color: var(--accent); }
+  .sheet-bar .save { color: var(--accent); font-weight: 600; }
+
+  .field {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    min-height: 44px;
+    font-size: var(--t-body);
+    letter-spacing: -0.014em;
+  }
+
+  .field .placeholder { color: var(--label-3); }
+  .field .caret {
+    display: inline-block;
+    width: 2px;
+    height: 21px;
+    background: var(--accent);
+    margin-right: 1px;
+    animation: blink 1.1s steps(1, end) infinite;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .swatches {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    flex-wrap: wrap;
+  }
+
+  .swatch {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--habit);
+    cursor: pointer;
+    position: relative;
+    transition: transform var(--spring-fast);
+  }
+
+  .swatch:active { transform: scale(0.88); }
+
+  .swatch:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .swatch[aria-pressed="true"] {
+    box-shadow: 0 0 0 3px var(--bg-card), 0 0 0 5.5px var(--habit);
+  }
+
+  /* La selección no depende solo del anillo de color: añade marca. */
+  .swatch[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+      center / 19px no-repeat;
+  }
+
+  .day-pills {
+    display: flex;
+    gap: 7px;
+    padding: 14px 16px 16px;
+  }
+
+  .pill {
+    appearance: none;
+    border: 0;
+    flex: 1;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--bg-fill);
+    color: var(--label-2);
+    font: inherit;
+    font-size: var(--t-footnote);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background var(--spring-fast),
+      color var(--spring-fast),
+      transform var(--spring-fast);
+  }
+
+  .pill:active { transform: scale(0.9); }
+
+  .pill:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .pill[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+  .switch {
+    flex: 0 0 auto;
+    width: 51px;
+    height: 31px;
+    border-radius: 999px;
+    background: var(--bg-fill-strong);
+    padding: 2px;
+    border: 0;
+    cursor: pointer;
+    transition: background var(--spring-fast);
+  }
+
+  .switch span {
+    display: block;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.24);
+    transition: transform var(--spring-fast);
+  }
+
+  .switch[aria-pressed="true"] { background: var(--h-green); }
+  .switch[aria-pressed="true"] span { transform: translateX(20px); }
+
+  .switch:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .footnote {
+    padding: 9px 6px 0;
+    font-size: var(--t-footnote);
+    line-height: 1.4;
+    color: var(--label-2);
+  }
+
+  /* ============================================================
+     PIE DE PÁGINA
+     ============================================================ */
+  .page-foot {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 8px 24px 64px;
+    border-top: 1px solid var(--stage-line);
+  }
+
+  .page-foot h2 {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--stage-label-2);
+    margin: 26px 0 12px;
+  }
+
+  .page-foot ul {
+    margin: 0;
+    padding-left: 20px;
+    max-width: 74ch;
+  }
+
+  .page-foot li {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--stage-label-2);
+    margin-bottom: 7px;
+  }
+
+  .page-foot strong { color: var(--stage-label); font-weight: 600; }
+
+  code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
+    font-size: 0.9em;
+    background: var(--bg-fill);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+    }
+    .toggle:active .well,
+    .pill:active,
+    .swatch:active,
+    .nav-action:active { transform: none; }
+  }
+</style>
+
+<header class="page-head">
+  <div>
+    <h1>Hábitos — maqueta de interfaz</h1>
+    <p>
+      Réplica en HTML de las cuatro pantallas de la app iOS. Los toggles, el
+      anillo, el selector de color y el de días funcionan. No es SwiftUI
+      ejecutándose: sirve para juzgar diseño, jerarquía y flujo.
+    </p>
+  </div>
+  <div class="theme-switch" role="group" aria-label="Apariencia">
+    <button type="button" data-set-theme="light" aria-pressed="false">Claro</button>
+    <button type="button" data-set-theme="dark" aria-pressed="false">Oscuro</button>
+    <button type="button" data-set-theme="auto" aria-pressed="true">Auto</button>
+  </div>
+</header>
+
+<div class="stage">
+  <!-- ══════════════════════════ HOY ══════════════════════════ -->
+  <figure class="device">
+    <figcaption>1 · Hoy</figcaption>
+    <div class="bezel">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="glyphs">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="battery" aria-hidden="true"><span></span></span>
+          </span>
+        </div>
+
+        <div class="scroll">
+          <div class="navbar">
+            <h2>
+              Hoy
+              <span class="subtitle">lunes, 27 de julio</span>
+            </h2>
+          </div>
+
+          <div class="ring-card">
+            <div class="ring">
+              <svg viewBox="0 0 116 116" aria-hidden="true">
+                <circle class="track" cx="58" cy="58" r="50" fill="none" stroke-width="11" />
+                <circle
+                  class="fill"
+                  id="ring-fill"
+                  cx="58" cy="58" r="50"
+                  fill="none" stroke-width="11"
+                  stroke-dasharray="314.16"
+                  stroke-dashoffset="314.16"
+                />
+              </svg>
+              <div class="ring-value" role="img" aria-label="Progreso de hoy">
+                <b id="ring-pct">0%</b>
+                <span id="ring-count">0 de 5</span>
+              </div>
+            </div>
+            <div class="ring-copy">
+              <h3 id="ring-title">Empieza el día</h3>
+              <p id="ring-sub">Tienes 5 hábitos programados para hoy.</p>
+            </div>
+          </div>
+
+          <div class="section-label">Hábitos de hoy</div>
+          <div class="card inset-separators" id="today-list"></div>
+
+          <p class="footnote">
+            «Correr» y «Estudiar inglés» aparecen hoy porque el lunes está en su
+            programación. Un hábito de fin de semana no se mostraría.
+          </p>
+        </div>
+
+        <nav class="tabbar" aria-label="Secciones">
+          <button type="button" aria-selected="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.6-5" />
+            </svg>
+            Hoy
+          </button>
+          <button type="button" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
+            </svg>
+            Historial
+          </button>
+          <button type="button" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />
+            </svg>
+            Hábitos
+          </button>
+        </nav>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ════════════════════════ HISTORIAL ════════════════════════ -->
+  <figure class="device">
+    <figcaption>2 · Historial</figcaption>
+    <div class="bezel">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="glyphs">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="battery" aria-hidden="true"><span></span></span>
+          </span>
+        </div>
+
+        <div class="scroll">
+          <div class="navbar"><h2>Historial</h2></div>
+
+          <div class="stats">
+            <div class="stat"><b>12</b><span>Racha actual</span></div>
+            <div class="stat"><b>21</b><span>Mejor racha</span></div>
+            <div class="stat"><b>84%</b><span>Este mes</span></div>
+          </div>
+
+          <div class="section-label">Julio 2026</div>
+          <div class="card" style="padding: 16px 14px 18px">
+            <div class="month-head">
+              <strong>julio 2026</strong>
+              <div class="month-nav">
+                <button type="button" aria-label="Mes anterior">‹</button>
+                <button type="button" aria-label="Mes siguiente">›</button>
+              </div>
+            </div>
+            <div class="weekday-head" aria-hidden="true">
+              <div>L</div><div>M</div><div>X</div><div>J</div>
+              <div>V</div><div>S</div><div>D</div>
+            </div>
+            <div class="month-grid" id="month-grid"></div>
+          </div>
+
+          <p class="footnote">
+            El arco de cada día indica qué fracción de los hábitos programados
+            cumpliste. Relleno completo = día perfecto.
+          </p>
+
+          <div class="section-label">Racha por hábito</div>
+          <div class="card" id="streak-list"></div>
+        </div>
+
+        <nav class="tabbar" aria-label="Secciones">
+          <button type="button" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.6-5" />
+            </svg>
+            Hoy
+          </button>
+          <button type="button" aria-selected="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
+            </svg>
+            Historial
+          </button>
+          <button type="button" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />
+            </svg>
+            Hábitos
+          </button>
+        </nav>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ════════════════════════ HÁBITOS ════════════════════════ -->
+  <figure class="device">
+    <figcaption>3 · Gestión</figcaption>
+    <div class="bezel">
+      <div class="screen">
+        <div class="statusbar">
+          <span>9:41</span>
+          <span class="glyphs">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="battery" aria-hidden="true"><span></span></span>
+          </span>
+        </div>
+
+        <div class="scroll">
+          <div class="navbar">
+            <h2>Hábitos</h2>
+            <button class="nav-action" type="button" aria-label="Nuevo hábito">+</button>
+          </div>
+
+          <div class="section-label">Activos</div>
+          <div class="card" id="manage-list"></div>
+
+          <div class="section-label">Archivados</div>
+          <div class="card">
+            <div class="row">
+              <span class="dot" style="--habit: var(--h-yellow)"></span>
+              <div class="row-text">
+                <div class="row-title" style="color: var(--label-2)">Tocar la guitarra</div>
+                <div class="row-sub">Archivado el 4 de junio · mejor racha 9 días</div>
+              </div>
+              <span class="chevron" aria-hidden="true">›</span>
+            </div>
+          </div>
+
+          <p class="footnote">
+            Archivar conserva el historial y las rachas conseguidas. Eliminar sí
+            borra los registros del hábito de forma permanente.
+          </p>
+        </div>
+
+        <nav class="tabbar" aria-label="Secciones">
+          <button type="button" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.6-5" />
+            </svg>
+            Hoy
+          </button>
+          <button type="button" aria-selected="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
+            </svg>
+            Historial
+          </button>
+          <button type="button" aria-selected="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />
+            </svg>
+            Hábitos
+          </button>
+        </nav>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ═════════════════════ NUEVO HÁBITO ═════════════════════ -->
+  <figure class="device">
+    <figcaption>4 · Nuevo hábito</figcaption>
+    <div class="bezel">
+      <div class="screen sheet-host">
+        <div class="behind">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="glyphs">
+              <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="battery" aria-hidden="true"><span></span></span>
+            </span>
+          </div>
+          <div class="scroll" style="padding-bottom: 20px">
+            <div class="navbar"><h2>Hábitos</h2></div>
+            <div class="card" id="manage-list-ghost"></div>
+          </div>
+        </div>
+
+        <div class="sheet-scrim" aria-hidden="true"></div>
+
+        <div class="sheet" role="dialog" aria-label="Nuevo hábito">
+          <div class="sheet-bar">
+            <span class="cancel">Cancelar</span>
+            <strong>Nuevo hábito</strong>
+            <span class="save">Guardar</span>
+          </div>
+
+          <div class="scroll" style="padding-bottom: 24px">
+            <div class="section-label" style="padding-top: 10px">Nombre</div>
+            <div class="card">
+              <div class="field">
+                <span>Estirar 5 minutos</span><span class="caret"></span>
+              </div>
+              <div class="field" style="border-top: 1px solid var(--separator)">
+                <span class="placeholder">Descripción (opcional)</span>
+              </div>
+            </div>
+
+            <div class="section-label">Color</div>
+            <div class="card">
+              <div class="swatches" id="swatches" role="group" aria-label="Color del hábito"></div>
+            </div>
+
+            <div class="section-label">Días</div>
+            <div class="card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-title">Todos los días</div>
+                </div>
+                <button class="switch" id="daily-switch" type="button" aria-pressed="false" aria-label="Todos los días"><span></span></button>
+              </div>
+              <div class="day-pills" id="day-pills" role="group" aria-label="Días de la semana"></div>
+            </div>
+
+            <p class="footnote" id="schedule-summary">Programado: Lun, Mié, Vie</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </figure>
+</div>
+
+<footer class="page-foot">
+  <h2>Lo que esta maqueta sí demuestra</h2>
+  <ul>
+    <li>
+      <strong>El anillo y la lista comparten estado.</strong> Marca un hábito en
+      la pantalla 1 y el anillo se recalcula; el día 27 del calendario de la
+      pantalla 2 también, porque es el mismo dato.
+    </li>
+    <li>
+      <strong>El color nunca es el único portador de información.</strong> El
+      toggle cambia de forma (círculo vacío → relleno con marca), no solo de
+      color, y los swatches seleccionados llevan marca además de anillo.
+    </li>
+    <li>
+      <strong>«Diario» no es un caso especial.</strong> El conmutador «Todos los
+      días» solo activa los siete pills — es la misma máscara de
+      <code>WeekdaySet</code> del modelo, con los 7 bits puestos.
+    </li>
+  </ul>
+
+  <h2>Lo que no demuestra</h2>
+  <ul>
+    <li>
+      <strong>No es SwiftUI.</strong> Es HTML imitando el sistema. El layout real
+      lo decide SwiftUI y diferirá en detalles de métrica.
+    </li>
+    <li>
+      <strong>La tipografía no es la correcta si ves esto en Windows.</strong> La
+      pila cae en Segoe UI Variable en lugar de SF Pro: los anchos y el
+      interletrado no coinciden con el dispositivo.
+    </li>
+    <li>
+      <strong>Falta el Liquid Glass real de iOS 26.</strong>
+      <code>backdrop-filter</code> aproxima la translucidez de las barras, pero
+      no la refracción ni el brillo de bordes del material nativo.
+    </li>
+  </ul>
+</footer>
+
+<script>
+  "use strict";
+
+  // ── Datos de ejemplo ───────────────────────────────────────────
+  // weekdays usa la convención de Foundation: 1 = domingo … 7 = sábado.
+  const EVERY_DAY = [1, 2, 3, 4, 5, 6, 7];
+
+  const HABITS = [
+    { name: "Meditar 10 minutos", notes: "Nada más levantarme", color: "green",  days: EVERY_DAY,        done: true,  streak: 12 },
+    { name: "Beber 2 litros de agua", notes: "", color: "teal",   days: EVERY_DAY,                       done: true,  streak: 7  },
+    { name: "Leer 20 páginas", notes: "Antes de dormir", color: "indigo", days: EVERY_DAY,               done: false, streak: 21 },
+    { name: "Correr", notes: "5 km suaves", color: "orange", days: [2, 4, 6],                            done: false, streak: 4  },
+    { name: "Estudiar inglés", notes: "30 min de repaso", color: "purple", days: [2, 3, 4, 5, 6],        done: false, streak: 9  }
+  ];
+
+  const WEEKDAY_INITIALS = { 2: "L", 3: "M", 4: "X", 5: "J", 6: "V", 7: "S", 1: "D" };
+  const WEEKDAY_NAMES = {
+    1: "domingo", 2: "lunes", 3: "martes", 4: "miércoles",
+    5: "jueves", 6: "viernes", 7: "sábado"
+  };
+  // Orden de presentación español: lunes primero.
+  const WEEKDAY_ORDER = [2, 3, 4, 5, 6, 7, 1];
+
+  const COLORS = ["red", "orange", "yellow", "green", "teal", "blue", "indigo", "purple"];
+
+  const CHECK_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M20 6 9 17l-5-5"/></svg>';
+
+  const FLAME_SVG =
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+    '<path d="M12 2s4.5 4.2 4.5 8.2a4.5 4.5 0 0 1-9 0C7.5 8.4 9 6.6 9 6.6S8 9 9.4 10.2' +
+    'c1 .9 1.6-.3 1.4-1.6C10.5 6.6 12 2 12 2Zm0 9.6c1.6 0 2.8 1.4 2.8 3.1 0 2.3-1.4 ' +
+    '4.3-2.8 5.3-1.4-1-2.8-3-2.8-5.3 0-1.7 1.2-3.1 2.8-3.1Z"/></svg>';
+
+  function scheduleText(days) {
+    if (days.length === 7) return "Todos los días";
+    if (days.length === 0) return "Sin días";
+    const sorted = WEEKDAY_ORDER.filter((d) => days.includes(d));
+    if (sorted.join() === "2,3,4,5,6") return "Días laborables";
+    if (sorted.join() === "7,1") return "Fines de semana";
+    return sorted
+      .map((d) => WEEKDAY_NAMES[d].slice(0, 3))
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(", ");
+  }
+
+  // ── Pantalla 1: lista de hoy ───────────────────────────────────
+  const todayList = document.getElementById("today-list");
+
+  HABITS.forEach((habit, index) => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML =
+      '<button class="toggle" type="button" aria-pressed="' + habit.done + '" ' +
+      'style="--habit: var(--h-' + habit.color + ')" ' +
+      'aria-label="' + habit.name + ', marcar como completado hoy">' +
+      '<span class="well">' + CHECK_SVG + "</span></button>" +
+      '<div class="row-text">' +
+      '<div class="row-title">' + habit.name + "</div>" +
+      '<div class="row-sub">' +
+      (habit.notes ? habit.notes + " · " : "") + scheduleText(habit.days) +
+      "</div></div>";
+
+    const toggle = row.querySelector(".toggle");
+    // Estado optimista en el pointer-down: el acuse visual no espera al click.
+    toggle.addEventListener("click", () => {
+      HABITS[index].done = !HABITS[index].done;
+      toggle.setAttribute("aria-pressed", String(HABITS[index].done));
+      refreshProgress();
+    });
+
+    todayList.appendChild(row);
+  });
+
+  // ── Anillo de progreso ─────────────────────────────────────────
+  const RADIUS = 50;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+  const ringFill = document.getElementById("ring-fill");
+  const ringPct = document.getElementById("ring-pct");
+  const ringCount = document.getElementById("ring-count");
+  const ringTitle = document.getElementById("ring-title");
+  const ringSub = document.getElementById("ring-sub");
+  const todayCell = { el: null };
+
+  ringFill.setAttribute("stroke-dasharray", String(CIRCUMFERENCE));
+
+  function refreshProgress() {
+    const total = HABITS.length;
+    const done = HABITS.filter((h) => h.done).length;
+    const fraction = total === 0 ? 0 : done / total;
+
+    ringFill.setAttribute(
+      "stroke-dashoffset",
+      String(CIRCUMFERENCE * (1 - fraction))
+    );
+    ringPct.textContent = Math.round(fraction * 100) + "%";
+    ringCount.textContent = done + " de " + total;
+
+    // El texto es específico del estado, no una plantilla genérica.
+    if (done === 0) {
+      ringTitle.textContent = "Empieza el día";
+      ringSub.textContent = "Tienes " + total + " hábitos programados para hoy.";
+    } else if (done === total) {
+      ringTitle.textContent = "Día completo";
+      ringSub.textContent = "Los " + total + " hábitos de hoy, hechos.";
+    } else {
+      const left = total - done;
+      ringTitle.textContent = "Vas por buen camino";
+      // Concuerda el verbo, no solo el sustantivo: "Te queda 1 hábito".
+      ringSub.textContent = left === 1
+        ? "Te queda 1 hábito por marcar."
+        : "Te quedan " + left + " hábitos por marcar.";
+    }
+
+    // Mismo dato, otra pantalla: el día de hoy en el calendario.
+    if (todayCell.el) {
+      todayCell.el.style.setProperty("--p", String(fraction));
+      todayCell.el.classList.toggle("is-perfect", fraction === 1);
+    }
+  }
+
+  // ── Pantalla 2: calendario de julio 2026 ───────────────────────
+  // El 1 de julio de 2026 cae en miércoles, así que la primera fila
+  // arranca con dos huecos (lunes y martes).
+  const LEADING_BLANKS = 2;
+  const DAYS_IN_MONTH = 31;
+  const TODAY = 27;
+
+  // Fracción cumplida por día, del 1 al 26. Datos de muestra plausibles:
+  // rachas largas con algún hueco, no una pauta perfecta.
+  const HISTORY = [
+    1, 1, 0.8, 1, 0.6, 0.4, 1, 1, 1, 0.8, 0, 0.2, 1,
+    1, 1, 1, 0.8, 1, 0.6, 1, 1, 1, 1, 0.8, 1, 1
+  ];
+
+  const monthGrid = document.getElementById("month-grid");
+
+  for (let i = 0; i < LEADING_BLANKS; i++) {
+    const blank = document.createElement("div");
+    blank.className = "day is-empty";
+    blank.setAttribute("aria-hidden", "true");
+    monthGrid.appendChild(blank);
+  }
+
+  for (let day = 1; day <= DAYS_IN_MONTH; day++) {
+    const cell = document.createElement("div");
+    cell.className = "day";
+
+    if (day < TODAY) {
+      const fraction = HISTORY[day - 1];
+      cell.dataset.progress = "";
+      cell.style.setProperty("--p", String(fraction));
+      if (fraction === 1) cell.classList.add("is-perfect");
+      cell.setAttribute(
+        "aria-label",
+        day + " de julio: " + Math.round(fraction * 100) + "% completado"
+      );
+    } else if (day === TODAY) {
+      cell.classList.add("is-today");
+      cell.dataset.progress = "";
+      cell.setAttribute("aria-label", "Hoy, 27 de julio");
+      todayCell.el = cell;
+    } else {
+      cell.classList.add("is-future");
+      cell.setAttribute("aria-label", day + " de julio, día futuro");
+    }
+
+    cell.innerHTML = "<span>" + day + "</span>";
+    monthGrid.appendChild(cell);
+  }
+
+  // ── Racha por hábito ──────────────────────────────────────────
+  const streakList = document.getElementById("streak-list");
+
+  HABITS.slice()
+    .sort((a, b) => b.streak - a.streak)
+    .forEach((habit) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML =
+        '<span class="dot" style="--habit: var(--h-' + habit.color + ')"></span>' +
+        '<div class="row-text"><div class="row-title">' + habit.name + "</div></div>" +
+        '<span class="streak">' + FLAME_SVG + habit.streak + " días</span>";
+      streakList.appendChild(row);
+    });
+
+  // ── Pantalla 3 y fondo de la 4: gestión ───────────────────────
+  ["manage-list", "manage-list-ghost"].forEach((id) => {
+    const list = document.getElementById(id);
+    HABITS.forEach((habit) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML =
+        '<span class="dot" style="--habit: var(--h-' + habit.color + ')"></span>' +
+        '<div class="row-text">' +
+        '<div class="row-title">' + habit.name + "</div>" +
+        '<div class="row-sub">' + scheduleText(habit.days) + "</div></div>" +
+        '<span class="chevron" aria-hidden="true">›</span>';
+      list.appendChild(row);
+    });
+  });
+
+  // ── Pantalla 4: formulario ────────────────────────────────────
+  const swatches = document.getElementById("swatches");
+  let selectedColor = "green";
+
+  COLORS.forEach((color) => {
+    const button = document.createElement("button");
+    button.className = "swatch";
+    button.type = "button";
+    button.style.setProperty("--habit", "var(--h-" + color + ")");
+    button.setAttribute("aria-pressed", String(color === selectedColor));
+    button.setAttribute("aria-label", color);
+    button.addEventListener("click", () => {
+      selectedColor = color;
+      swatches.querySelectorAll(".swatch").forEach((other) => {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+    });
+    swatches.appendChild(button);
+  });
+
+  const dayPills = document.getElementById("day-pills");
+  const dailySwitch = document.getElementById("daily-switch");
+  const scheduleSummary = document.getElementById("schedule-summary");
+  let selectedDays = [2, 4, 6];
+
+  WEEKDAY_ORDER.forEach((weekday) => {
+    const pill = document.createElement("button");
+    pill.className = "pill";
+    pill.type = "button";
+    pill.dataset.weekday = String(weekday);
+    pill.textContent = WEEKDAY_INITIALS[weekday];
+    pill.setAttribute("aria-label", WEEKDAY_NAMES[weekday]);
+    pill.addEventListener("click", () => {
+      selectedDays = selectedDays.includes(weekday)
+        ? selectedDays.filter((d) => d !== weekday)
+        : selectedDays.concat(weekday);
+      refreshSchedule();
+    });
+    dayPills.appendChild(pill);
+  });
+
+  // «Todos los días» no es un modo aparte: solo pone los siete bits.
+  dailySwitch.addEventListener("click", () => {
+    selectedDays = selectedDays.length === 7 ? [] : EVERY_DAY.slice();
+    refreshSchedule();
+  });
+
+  function refreshSchedule() {
+    dayPills.querySelectorAll(".pill").forEach((pill) => {
+      const weekday = Number(pill.dataset.weekday);
+      pill.setAttribute("aria-pressed", String(selectedDays.includes(weekday)));
+    });
+    dailySwitch.setAttribute("aria-pressed", String(selectedDays.length === 7));
+    scheduleSummary.textContent = selectedDays.length === 0
+      ? "Elige al menos un día para poder guardar."
+      : "Programado: " + scheduleText(selectedDays);
+  }
+
+  // ── Conmutador de apariencia ──────────────────────────────────
+  const themeButtons = document.querySelectorAll("[data-set-theme]");
+
+  themeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const theme = button.dataset.setTheme;
+      if (theme === "auto") {
+        delete document.documentElement.dataset.theme;
+      } else {
+        document.documentElement.dataset.theme = theme;
+      }
+      themeButtons.forEach((other) => {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+    });
+  });
+
+  // ── Arranque ──────────────────────────────────────────────────
+  refreshProgress();
+  refreshSchedule();
+</script>
