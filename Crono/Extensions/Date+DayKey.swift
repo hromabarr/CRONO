@@ -45,14 +45,25 @@ extension Calendar {
 
     /// Convierte una clave de día en el instante de su medianoche.
     ///
-    /// Devuelve `nil` solo si la clave no representa una fecha válida
-    /// (por ejemplo `20260230`).
+    /// Devuelve `nil` si la clave no representa una fecha válida, por ejemplo
+    /// `20260230`.
+    ///
+    /// La comprobación de ida y vuelta es imprescindible: `Calendar.date(from:)`
+    /// **normaliza** los componentes fuera de rango en lugar de rechazarlos, así
+    /// que el 30 de febrero se convierte en el 2 de marzo sin avisar. Devolver
+    /// esa fecha desplazada daría el día de la semana equivocado y, con él, una
+    /// programación equivocada.
     func date(fromDayKey key: DayKey) -> Date? {
         var parts = DateComponents()
         parts.year = key / 10_000
         parts.month = (key / 100) % 100
         parts.day = key % 100
-        return date(from: parts)
+
+        guard let candidate = date(from: parts),
+              dayKey(from: candidate) == key
+        else { return nil }
+
+        return candidate
     }
 
     /// Día de la semana (1 = domingo … 7 = sábado) de una clave de día.

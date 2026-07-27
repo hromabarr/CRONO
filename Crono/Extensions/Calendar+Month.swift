@@ -23,15 +23,15 @@ extension Calendar {
 
     /// Clave de día de un día concreto del mes. `nil` si el día no existe en ese
     /// mes (por ejemplo el 31 de febrero).
+    ///
+    /// Se apoya en `date(fromDayKey:)`, que ya rechaza las fechas imposibles con
+    /// una comprobación de ida y vuelta. Antes duplicaba aquí esa validación
+    /// mientras `date(fromDayKey:)` no la tenía, que es justo el descuadre que
+    /// destapó el test del 30 de febrero.
     func dayKey(in month: MonthIdentifier, day: Int) -> DayKey? {
-        var parts = DateComponents()
-        parts.year = month.year
-        parts.month = month.month
-        parts.day = day
-        guard let date = date(from: parts),
-              component(.day, from: date) == day
-        else { return nil }
-        return dayKey(from: date)
+        guard (1...31).contains(day) else { return nil }
+        let candidate = month.year * 10_000 + month.month * 100 + day
+        return date(fromDayKey: candidate) == nil ? nil : candidate
     }
 
     /// Primer día del mes como instante, si el mes es válido.
