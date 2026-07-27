@@ -12,10 +12,20 @@ import Foundation
 struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
     let rawValue: Int
 
+    /// Los siete bits válidos, como entero.
+    ///
+    /// Es un `Int` y no `everyDay.rawValue` por una razón que no es de estilo:
+    /// `init(rawValue:)` necesita esta máscara, y un `static let` se inicializa
+    /// una sola vez a través de `swift_once`. Si la leyera de `everyDay`,
+    /// inicializar `everyDay` llamaría a `init(rawValue:)`, que volvería a pedir
+    /// `everyDay` mientras aún se está inicializando: un `swift_once` reentrante
+    /// **aborta el proceso**. Con un entero suelto no hay ciclo posible.
+    private static let validBits: Int = 0b111_1111
+
     init(rawValue: Int) {
         // Se descartan bits fuera de rango para que datos corruptos no
         // produzcan "días" inexistentes al iterar.
-        self.rawValue = rawValue & Self.everyDay.rawValue
+        self.rawValue = rawValue & Self.validBits
     }
 
     static let sunday = WeekdaySet(rawValue: 1 << 0)
@@ -27,7 +37,7 @@ struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
     static let saturday = WeekdaySet(rawValue: 1 << 6)
 
     /// Los siete días. Equivale a un hábito diario.
-    static let everyDay = WeekdaySet(rawValue: 0b111_1111)
+    static let everyDay = WeekdaySet(rawValue: validBits)
 
     /// Lunes a viernes.
     static let weekdays: WeekdaySet = [.monday, .tuesday, .wednesday, .thursday, .friday]
