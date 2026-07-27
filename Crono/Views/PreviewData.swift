@@ -95,6 +95,11 @@ enum PreviewData {
                 to: today,
                 percent: percent,
                 seed: index,
+                // Los dos primeros quedan hechos hoy y los tres últimos
+                // pendientes. Un juego de datos donde todo está cumplido deja
+                // el anillo siempre al 100 % y no enseña ni el progreso parcial
+                // ni los toggles sin marcar, que es la mitad de la pantalla.
+                completeToday: index < 2,
                 calendar: calendar,
                 context: context
             )
@@ -126,6 +131,7 @@ enum PreviewData {
         to end: Date,
         percent: Int,
         seed: Int,
+        completeToday: Bool,
         calendar: Calendar,
         context: ModelContext
     ) {
@@ -136,6 +142,20 @@ enum PreviewData {
             guard let weekday = calendar.weekday(fromDayKey: dayKey),
                   habit.schedule.contains(weekday: weekday)
             else { continue }
+
+            // Hoy no se decide por la secuencia pseudoaleatoria, sino a mano,
+            // para que la pantalla Hoy tenga un progreso parcial de verdad.
+            if dayKey == endKey {
+                if completeToday {
+                    let completion = HabitCompletion(
+                        dayKey: dayKey,
+                        completedAt: calendar.date(fromDayKey: dayKey) ?? end
+                    )
+                    context.insert(completion)
+                    completion.habit = habit
+                }
+                continue
+            }
 
             // Secuencia pseudoaleatoria reproducible: mismo hábito, mismo día,
             // mismo resultado en cada arranque de la previsualización.

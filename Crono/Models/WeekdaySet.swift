@@ -120,9 +120,22 @@ struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
         return symbols[weekday - 1]
     }
 
-    /// Inicial localizada de un día ("L"), para el selector compacto.
+    /// Inicial de un día ("L"), para el selector compacto y la cabecera del
+    /// calendario.
+    ///
+    /// Va en una tabla fija y no como primera letra de `shortWeekdaySymbols`:
+    /// en español eso da "lun, mar, mié…", y **martes y miércoles colisionan en
+    /// M**, dejando una cabecera `D L M M J V S` que no se puede leer. La
+    /// convención en castellano —y la que usa la propia app de Calendario de
+    /// Apple— es **X** para miércoles.
+    ///
+    /// Hardcodear el castellano es coherente con el resto de la app, que tiene
+    /// todos sus textos en español.
     static func initial(forWeekday weekday: Int) -> String {
-        String(shortName(forWeekday: weekday).prefix(1))
+        // Índice por `Calendar.weekday`: 1 = domingo … 7 = sábado.
+        let initials = ["D", "L", "M", "X", "J", "V", "S"]
+        guard (1...7).contains(weekday) else { return "" }
+        return initials[weekday - 1]
     }
 }
 
