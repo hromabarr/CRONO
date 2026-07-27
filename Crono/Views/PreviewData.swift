@@ -23,7 +23,7 @@ enum PreviewData {
         let container: ModelContainer
         do {
             container = try ModelContainer(
-                for: Habit.self, HabitCompletion.self,
+                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self,
                 configurations: configuration
             )
         } catch {
@@ -39,7 +39,7 @@ enum PreviewData {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
             return try ModelContainer(
-                for: Habit.self, HabitCompletion.self,
+                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self,
                 configurations: configuration
             )
         } catch {

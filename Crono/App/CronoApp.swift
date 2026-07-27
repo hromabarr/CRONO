@@ -10,7 +10,10 @@ struct CronoApp: App {
     private let storageWarning: String?
 
     init() {
-        let schema = Schema([Habit.self, HabitCompletion.self])
+        let schema = Schema([
+            Habit.self, HabitCompletion.self,
+            ReminderList.self, Reminder.self
+        ])
         var warning: String?
         let resolved: ModelContainer
 

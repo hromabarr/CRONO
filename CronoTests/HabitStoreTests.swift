@@ -23,7 +23,7 @@ struct HabitStoreTests {
     func makeStore() throws -> (store: HabitStore, context: ModelContext) {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: Habit.self, HabitCompletion.self,
+            for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self,
             configurations: configuration
         )
         let context = ModelContext(container)
