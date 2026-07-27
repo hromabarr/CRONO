@@ -97,7 +97,16 @@ jobs:
             }
           ' xcodebuild.log | head -40
 
-          errores=$(grep -E "error: " xcodebuild.log | sed "s|$ROOT||" | sort -u | head -60)
+          # Solo diagnósticos del compilador y del enlazador. El filtro es
+          # estrecho a propósito: un `grep "error: "` a secas captura también las
+          # líneas `[error] CoreData: error:` que la app emite al ejecutarse, y
+          # esas decenas de líneas de runtime ahogan el fallo real.
+          errores=$(grep -E "^[^ ]*\.swift:[0-9]+:[0-9]+: error: |^(ld|clang|swiftc): error: |^error: " \
+            xcodebuild.log | sed "s|$ROOT||" | sort -u | head -60)
+
+          # Fallos de test, que no llevan la forma archivo:línea: error:
+          fallos=$(grep -E "Test Case .* failed|✘ |Issue recorded|XCTAssert.* failed|error: -\[" \
+            xcodebuild.log | sed "s|$ROOT||" | sort -u | head -40)
 
           # Las banderas -warn-long-* nombran cada función y expresión que pasa
           # de 200 ms. Ordenarlas por milisegundos señala dónde se atasca el
@@ -108,20 +117,28 @@ jobs:
 
           # ── Resumen del job ──
           {
-            echo "## Errores"
+            echo "## Errores de compilación"
             echo '```'
-            echo "${errores:-(ninguna línea con 'error:')}"
+            echo "${errores:-(ninguno — el proyecto compila)}"
+            echo '```'
+            echo "## Fallos de test"
+            echo '```'
+            echo "${fallos:-(ninguno)}"
             echo '```'
             echo "## Lo más lento de comprobar tipos"
             echo "Ordenado de mayor a menor. El culpable suele estar arriba."
             echo '```'
-            echo "${lentas:-(ninguna; puede que el fallo no sea de inferencia de tipos)}"
+            echo "${lentas:-(ninguna)}"
             echo '```'
+            echo "El log completo va como artefacto \`log-xcodebuild\`."
           } >> "$GITHUB_STEP_SUMMARY"
 
           # ── Consola ──
-          echo "════════════════ ERRORES ════════════════"
+          echo "════════════ ERRORES DE COMPILACIÓN ════════════"
           echo "${errores:-(ninguno)}"
+          echo ""
+          echo "═══════════════ FALLOS DE TEST ═══════════════"
+          echo "${fallos:-(ninguno)}"
           echo ""
           echo "═══════ LO MÁS LENTO DE COMPROBAR TIPOS ═══════"
           echo "${lentas:-(ninguna)}"

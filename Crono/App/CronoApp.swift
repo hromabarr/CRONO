@@ -14,6 +14,8 @@ struct CronoApp: App {
         var warning: String?
         let resolved: ModelContainer
 
+        Self.ensureApplicationSupportExists()
+
         do {
             resolved = try ModelContainer(for: schema)
         } catch {
@@ -40,6 +42,25 @@ struct CronoApp: App {
         self.container = resolved
         self.storageWarning = warning
         _store = State(initialValue: HabitStore(context: resolved.mainContext))
+    }
+
+    /// Crea `Application Support` si no existe.
+    ///
+    /// SwiftData guarda ahí su `default.store`, pero **no crea el directorio**:
+    /// en un contenedor recién instalado —lo habitual en un simulador de CI— la
+    /// carpeta puede no existir y la apertura del almacén falla con
+    /// `errno 2 / No such file or directory`.
+    ///
+    /// `url(for:in:appropriateFor:create:)` con `create: true` la crea si falta y
+    /// no hace nada si ya está. Si aun así falla, no se hace nada aquí: el
+    /// `init` de abajo ya cae a un contenedor en memoria y avisa al usuario.
+    private static func ensureApplicationSupportExists() {
+        _ = try? FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
     }
 
     var body: some Scene {
