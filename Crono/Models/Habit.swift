@@ -122,16 +122,31 @@ extension Habit {
     ///
     /// Materializa la relación, así que conviene calcularlo una vez por pantalla
     /// y no dentro de un bucle de dibujado.
+    ///
+    /// Se rellena con un bucle en lugar de `Set(completions.map(\.dayKey))`: ese
+    /// encadenado —un `map` por key path alimentando el inicializador genérico
+    /// de `Set`, sobre una relación cuyo tipo resuelve el macro `@Model`— hacía
+    /// que el inferidor de tipos de Swift se rindiera al compilar este archivo.
     var completedDayKeys: Set<DayKey> {
-        Set(completions.map(\.dayKey))
+        var keys: Set<DayKey> = []
+        for completion in completions {
+            keys.insert(completion.dayKey)
+        }
+        return keys
     }
 
     func isCompleted(on dayKey: DayKey) -> Bool {
-        completions.contains { $0.dayKey == dayKey }
+        for completion in completions where completion.dayKey == dayKey {
+            return true
+        }
+        return false
     }
 
     /// El registro de compleción de un día, si existe.
     func completion(on dayKey: DayKey) -> HabitCompletion? {
-        completions.first { $0.dayKey == dayKey }
+        for completion in completions where completion.dayKey == dayKey {
+            return completion
+        }
+        return nil
     }
 }

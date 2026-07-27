@@ -64,11 +64,39 @@ jobs:
 
       - name: Ejecutar los tests
         run: |
+          # `pipefail` es imprescindible: sin él, el `tee` devolvería 0 y el
+          # paso pasaría por bueno aunque xcodebuild hubiera fallado.
+          set -o pipefail
           xcodebuild test \
             -project Crono.xcodeproj \
             -scheme Crono \
             -destination "id=${{ steps.sim.outputs.udid }}" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee xcodebuild.log
+
+      # El log de xcodebuild son miles de líneas y GitHub solo anota
+      # «exit code 65», que no dice nada. Esto extrae lo único que importa
+      # para poder arreglarlo sin tener que bucear en el log entero.
+      - name: Resumen de errores
+        if: failure()
+        run: |
+          echo "════════════════ ERRORES ════════════════"
+          grep -E "error:" xcodebuild.log | sed 's|/Users/runner/work/CRONO/CRONO/||' \
+            | sort -u | head -80 || echo "(ninguna línea 'error:')"
+          echo ""
+          echo "════════════════ AVISOS ════════════════"
+          grep -E "warning:" xcodebuild.log | sed 's|/Users/runner/work/CRONO/CRONO/||' \
+            | sort -u | head -30 || echo "(ninguno)"
+          echo ""
+          echo "════════════ COMANDOS FALLIDOS ════════════"
+          sed -n '/The following build commands failed/,$p' xcodebuild.log | head -30
+
+      - name: Guardar el log completo
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-xcodebuild
+          path: xcodebuild.log
+          retention-days: 7
 
   # ─────────────────────────────────────────────────────────────
   # Capturas reales de la app corriendo en el simulador.
