@@ -79,13 +79,24 @@ jobs:
       - name: Resumen de errores
         if: failure()
         run: |
+          strip() { sed 's|/Users/runner/work/CRONO/CRONO/||'; }
+
           echo "════════════════ ERRORES ════════════════"
-          grep -E "error:" xcodebuild.log | sed 's|/Users/runner/work/CRONO/CRONO/||' \
-            | sort -u | head -80 || echo "(ninguna línea 'error:')"
+          echo "(con archivo:línea — es lo que hace falta para arreglarlos)"
+          grep -E "error:" xcodebuild.log | strip | sort -u | head -80 \
+            || echo "(ninguna línea 'error:')"
+
           echo ""
-          echo "════════════════ AVISOS ════════════════"
-          grep -E "warning:" xcodebuild.log | sed 's|/Users/runner/work/CRONO/CRONO/||' \
-            | sort -u | head -30 || echo "(ninguno)"
+          echo "═══════ LO MÁS LENTO DE COMPROBAR TIPOS ═══════"
+          echo "(ordenado de mayor a menor; el culpable suele estar arriba)"
+          # Las banderas -warn-long-* nombran cada función y expresión que pasa
+          # de 200 ms. Ordenarlas por milisegundos señala directamente dónde se
+          # atasca el inferidor, en vez de tener que deducirlo.
+          grep -oE "[^ ]+\.swift:[0-9]+:[0-9]+: warning: .* took [0-9]+ms to type-check[^)]*\)" \
+            xcodebuild.log | strip | sort -u \
+            | sed -E 's/.* took ([0-9]+)ms/\1ms &/' | sort -rn | cut -d' ' -f2- | head -25 \
+            || echo "(ninguna; puede que el fallo no sea de inferencia de tipos)"
+
           echo ""
           echo "════════════ COMANDOS FALLIDOS ════════════"
           sed -n '/The following build commands failed/,$p' xcodebuild.log | head -30
