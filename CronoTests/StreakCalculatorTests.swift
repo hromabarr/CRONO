@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import HabitTracker
+@testable import Crono
 
 /// Pruebas de la lógica de rachas.
 ///

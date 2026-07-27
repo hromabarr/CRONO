@@ -1,4 +1,4 @@
-name: HabitTracker
+name: Crono
 
 options:
   bundleIdPrefix: com.xilgar
@@ -17,33 +17,32 @@ settings:
     GENERATE_INFOPLIST_FILE: NO
 
 targets:
-  HabitTracker:
+  Crono:
     type: application
     platform: iOS
     sources:
       # Info.plist lo genera XcodeGen a partir del bloque `info`; se excluye de
       # `sources` para que no se copie además como recurso.
-      - path: HabitTracker
+      - path: Crono
         excludes:
           - Info.plist
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.xilgar.habittracker
-        # Sin tilde a propósito: este es el nombre del binario y del bundle
-        # (Habitos.app), y hay herramientas de firma y sideload que tropiezan
-        # con caracteres no ASCII en la ruta. El nombre que ve el usuario en la
-        # pantalla de inicio es CFBundleDisplayName, que sí lleva tilde.
-        PRODUCT_NAME: Habitos
+        # El identificador es neutro a propósito: la app crecerá con tareas y
+        # alarmas, y cambiarlo más adelante haría que iOS la tratase como una
+        # app distinta, borrando el historial y las rachas del usuario.
+        PRODUCT_BUNDLE_IDENTIFIER: com.xilgar.crono
+        PRODUCT_NAME: Crono
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1,2"
     info:
-      path: HabitTracker/Info.plist
+      path: Crono/Info.plist
       # Los ajustes INFOPLIST_KEY_* de Xcode solo se aplican cuando
       # GENERATE_INFOPLIST_FILE está activo; aquí el plist es explícito, así que
       # las claves van en este bloque.
       properties:
-        CFBundleDisplayName: Hábitos
+        CFBundleDisplayName: Crono
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false
@@ -56,28 +55,28 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
 
-  HabitTrackerTests:
+  CronoTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: HabitTrackerTests
+      - path: CronoTests
     dependencies:
-      - target: HabitTracker
+      - target: Crono
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.xilgar.habittracker.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.xilgar.crono.tests
         GENERATE_INFOPLIST_FILE: YES
 
 schemes:
-  HabitTracker:
+  Crono:
     build:
       targets:
-        HabitTracker: all
-        HabitTrackerTests: [test]
+        Crono: all
+        CronoTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       gatherCoverageData: true
       targets:
-        - HabitTrackerTests
+        - CronoTests

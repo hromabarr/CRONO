@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 @main
-struct HabitTrackerApp: App {
+struct CronoApp: App {
     private let container: ModelContainer
     @State private var store: HabitStore
 

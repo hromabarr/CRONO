@@ -16,7 +16,7 @@ on:
         default: true
 
 env:
-  BUNDLE_ID: com.xilgar.habittracker
+  BUNDLE_ID: com.xilgar.crono
 
 jobs:
   # ─────────────────────────────────────────────────────────────
@@ -65,8 +65,8 @@ jobs:
       - name: Ejecutar los tests
         run: |
           xcodebuild test \
-            -project HabitTracker.xcodeproj \
-            -scheme HabitTracker \
+            -project Crono.xcodeproj \
+            -scheme Crono \
             -destination "id=${{ steps.sim.outputs.udid }}" \
             CODE_SIGNING_ALLOWED=NO
 
@@ -91,8 +91,8 @@ jobs:
       - name: Compilar para el simulador
         run: |
           xcodebuild build \
-            -project HabitTracker.xcodeproj \
-            -scheme HabitTracker \
+            -project Crono.xcodeproj \
+            -scheme Crono \
             -configuration Debug \
             -sdk iphonesimulator \
             -derivedDataPath build \
@@ -175,8 +175,8 @@ jobs:
         # compila deliberadamente sin certificado: no hace falta ninguno.
         run: |
           xcodebuild build \
-            -project HabitTracker.xcodeproj \
-            -scheme HabitTracker \
+            -project Crono.xcodeproj \
+            -scheme Crono \
             -configuration Release \
             -sdk iphoneos \
             -derivedDataPath build \
@@ -199,11 +199,11 @@ jobs:
           echo "Empaquetando $APP"
           mkdir -p Payload
           cp -R "$APP" Payload/
-          zip -qry Habitos-sin-firmar.ipa Payload
-          ls -lh Habitos-sin-firmar.ipa
+          zip -qry Crono-sin-firmar.ipa Payload
+          ls -lh Crono-sin-firmar.ipa
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Habitos-ipa
-          path: Habitos-sin-firmar.ipa
+          name: Crono-ipa
+          path: Crono-sin-firmar.ipa
           retention-days: 30

@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 import Testing
 
-@testable import HabitTracker
+@testable import Crono
 
 /// Pruebas del almacén contra un contenedor en memoria.
 ///

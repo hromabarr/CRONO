@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import HabitTracker
+@testable import Crono
 
 /// Pruebas de los cimientos: conversión de fechas y máscara de días.
 ///

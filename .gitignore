@@ -1,6 +1,6 @@
 # Generado por XcodeGen a partir de project.yml — nunca se versiona.
 *.xcodeproj/
-HabitTracker/Info.plist
+Crono/Info.plist
 
 # Salidas de compilación
 build/
