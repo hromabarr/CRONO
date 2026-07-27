@@ -30,7 +30,7 @@ jobs:
       simulator: ${{ steps.sim.outputs.udid }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Nunca falla: solo deja en el log qué SDK hay, para que si el build
       # peta por la versión de iOS sepas de un vistazo por qué.
@@ -80,7 +80,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Instalar XcodeGen
         run: brew install xcodegen
@@ -162,7 +162,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Instalar XcodeGen
         run: brew install xcodegen
