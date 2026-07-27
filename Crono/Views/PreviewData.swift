@@ -51,6 +51,10 @@ enum PreviewData {
         HabitStore(context: container.mainContext)
     }
 
+    static func reminderStore(for container: ModelContainer) -> ReminderStore {
+        ReminderStore(context: container.mainContext)
+    }
+
     // MARK: - Contenido
 
     /// Inserta el contenido de ejemplo en un contexto cualquiera.
@@ -117,7 +121,81 @@ enum PreviewData {
         )
         context.insert(archived)
 
+        populateReminders(context, calendar: calendar, today: today)
+
         try? context.save()
+    }
+
+    /// Listas y tareas de ejemplo.
+    ///
+    /// Se reparten a propósito casos distintos: sin fecha, atrasada, para hoy con
+    /// hora, con prioridad, con bandera y con subtareas. Un juego de datos donde
+    /// todas las tareas son iguales no enseña ninguno de esos estados.
+    private static func populateReminders(
+        _ context: ModelContext,
+        calendar: Calendar,
+        today: Date
+    ) {
+        let todayKey = calendar.dayKey(from: today)
+        let yesterday = calendar.dayKey(todayKey, offsetByDays: -1)
+        let tomorrow = calendar.dayKey(todayKey, offsetByDays: 1)
+
+        let personal = ReminderList(name: "Personal", color: .blue, symbolName: "person", sortIndex: 0)
+        let work = ReminderList(name: "Trabajo", color: .orange, symbolName: "briefcase", sortIndex: 1)
+        context.insert(personal)
+        context.insert(work)
+
+        let specs: [(String, ReminderList, DayKey?, Int?, ReminderPriority, Bool)] = [
+            ("Llamar al dentista", personal, yesterday, 10 * 60, .high, true),
+            ("Comprar pan", personal, todayKey, nil, .none, false),
+            ("Recoger el paquete", personal, todayKey, 18 * 60 + 30, .medium, false),
+            ("Cambiar las bombillas", personal, nil, nil, .none, false),
+            ("Revisar el informe", work, todayKey, 9 * 60, .high, false),
+            ("Responder correos", work, tomorrow, nil, .low, false),
+            ("Preparar la reunión", work, nil, nil, .none, true)
+        ]
+
+        for (index, spec) in specs.enumerated() {
+            let (title, list, dayKey, minute, priority, flagged) = spec
+            let reminder = Reminder(
+                title: title,
+                sortIndex: index,
+                dueDayKey: dayKey,
+                dueMinuteOfDay: minute,
+                priority: priority,
+                isFlagged: flagged
+            )
+            context.insert(reminder)
+            reminder.list = list
+        }
+
+        // Una tarea con subtareas, para que se vea el indicador «1 de 3».
+        let move = Reminder(title: "Preparar la mudanza", sortIndex: specs.count, dueDayKey: tomorrow)
+        context.insert(move)
+        move.list = personal
+
+        let steps = ["Pedir cajas", "Reservar furgoneta", "Avisar al portero"]
+        for (index, step) in steps.enumerated() {
+            let subtask = Reminder(
+                title: step,
+                isCompleted: index == 0,
+                completedAt: index == 0 ? today : nil,
+                sortIndex: index
+            )
+            context.insert(subtask)
+            subtask.list = personal
+            subtask.parent = move
+        }
+
+        // Y una completada, para que la sección plegable no salga vacía.
+        let done = Reminder(
+            title: "Pagar el recibo del agua",
+            isCompleted: true,
+            completedAt: calendar.date(byAdding: .hour, value: -3, to: today),
+            sortIndex: 99
+        )
+        context.insert(done)
+        done.list = personal
     }
 
     /// Rellena el historial de un hábito de forma determinista.

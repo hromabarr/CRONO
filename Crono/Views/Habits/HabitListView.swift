@@ -51,7 +51,19 @@ struct HabitListView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
+        // Los dos van juntos a la derecha para que el `EditButton` conserve su
+        // sitio a la izquierda: sin él no hay modo edición, y sin modo edición no
+        // se pueden reordenar los hábitos arrastrando.
+        ToolbarItemGroup(placement: .primaryAction) {
+            // El historial se abre desde aquí y no desde la barra de pestañas:
+            // pertenece a los hábitos, y así queda sitio para tareas y alarmas.
+            NavigationLink {
+                HistoryView()
+            } label: {
+                Image(systemName: "chart.bar")
+            }
+            .accessibilityLabel("Historial")
+
             Button { editingMode = .create } label: {
                 Image(systemName: "plus")
             }

@@ -2,6 +2,11 @@ import SwiftData
 import SwiftUI
 
 /// Pantalla de historial: calendario mensual y estadísticas.
+///
+/// No trae `NavigationStack` propio: se abre empujada desde Hábitos, así que la
+/// pila la aporta esa pantalla. El historial *es* de los hábitos, no una sección
+/// al mismo nivel, y sacarlo de la barra de pestañas deja el sitio que necesitan
+/// las tareas y las alarmas.
 struct HistoryView: View {
     @Query(HabitQueries.active) private var activeHabits: [Habit]
 
@@ -12,19 +17,17 @@ struct HistoryView: View {
     init() {}
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                if activeHabits.isEmpty {
-                    EmptyStateView.noHistory
-                        .padding(.top, 60)
-                } else {
-                    HistoryContent(viewModel: viewModel, habits: activeHabits)
-                }
+        ScrollView {
+            if activeHabits.isEmpty {
+                EmptyStateView.noHistory
+                    .padding(.top, 60)
+            } else {
+                HistoryContent(viewModel: viewModel, habits: activeHabits)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle(Text("Historial"))
-            .navigationBarTitleDisplayMode(.large)
         }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle(Text("Historial"))
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -123,7 +126,7 @@ private struct StreakListCard: View {
 #Preview("Con historial") {
     let container = PreviewData.container()
 
-    HistoryView()
+    NavigationStack { HistoryView() }
         .modelContainer(container)
         .environment(PreviewData.store(for: container))
 }
@@ -131,7 +134,7 @@ private struct StreakListCard: View {
 #Preview("Sin historial") {
     let container = PreviewData.emptyContainer()
 
-    HistoryView()
+    NavigationStack { HistoryView() }
         .modelContainer(container)
         .environment(PreviewData.store(for: container))
 }

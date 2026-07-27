@@ -1,15 +1,22 @@
 import SwiftUI
 
-/// Las tres secciones de la app.
+/// Las secciones de la app.
+///
+/// Historial no está: es una pantalla que se abre desde Hábitos, no una sección
+/// al mismo nivel. El historial *es* de los hábitos, y sacarlo de la barra deja
+/// el sitio que necesitan las tareas y, más adelante, las alarmas — sin llegar a
+/// cinco pestañas, que es más de lo que una barra sostiene con comodidad.
 enum AppTab: Hashable {
     case today
-    case history
+    case reminders
     case habits
 }
 
-/// Contenedor de pestañas y presentación de errores del almacén.
+/// Contenedor de pestañas, apariencia y presentación de errores.
 struct RootView: View {
     @Environment(HabitStore.self) private var store
+    @Environment(ReminderStore.self) private var reminderStore
+
     @State private var selectedTab: AppTab = .initial
 
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .system
@@ -26,23 +33,23 @@ struct RootView: View {
                 TodayView(onCreateHabit: { selectedTab = .habits })
             }
 
-            Tab("Historial", systemImage: "calendar", value: AppTab.history) {
-                HistoryView()
+            Tab("Tareas", systemImage: "list.bullet.rectangle", value: AppTab.reminders) {
+                ReminderListsView()
             }
 
-            Tab("Hábitos", systemImage: "list.bullet", value: AppTab.habits) {
+            Tab("Hábitos", systemImage: "repeat", value: AppTab.habits) {
                 HabitListView()
             }
         }
         .alert(
             "Algo ha fallado",
             isPresented: Binding(
-                get: { store.failure != nil },
-                set: { if !$0 { store.failure = nil } }
+                get: { failure != nil },
+                set: { if !$0 { clearFailure() } }
             ),
-            presenting: store.failure
+            presenting: failure
         ) { _ in
-            Button("Entendido", role: .cancel) { store.failure = nil }
+            Button("Entendido", role: .cancel) { clearFailure() }
         } message: { failure in
             // Un fallo al guardar se cuenta. Tragárselo con `try?` haría que la
             // app pareciera haber guardado algo que no guardó.
@@ -52,6 +59,19 @@ struct RootView: View {
         // iOS, incluido el cambio al anochecer.
         .preferredColorScheme(appearance.colorScheme)
     }
+
+    /// Los dos almacenes comparten una sola alerta.
+    ///
+    /// Dos `.alert` en la misma vista compiten por presentarse y uno se pierde;
+    /// además, al usuario le da igual cuál de los dos subsistemas falló.
+    private var failure: StoreFailure? {
+        store.failure ?? reminderStore.failure
+    }
+
+    private func clearFailure() {
+        store.failure = nil
+        reminderStore.failure = nil
+    }
 }
 
 #Preview {
@@ -60,4 +80,5 @@ struct RootView: View {
     RootView()
         .modelContainer(container)
         .environment(PreviewData.store(for: container))
+        .environment(PreviewData.reminderStore(for: container))
 }

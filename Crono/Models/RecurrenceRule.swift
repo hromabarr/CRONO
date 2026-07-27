@@ -6,7 +6,9 @@ import Foundation
 /// `.weekly` lleva un conjunto de días dentro y SwiftData no almacena enums con
 /// carga útil sin envolverlos. El formato es legible a propósito —`weekly:42`—
 /// para que un volcado de la base se pueda leer sin descifrar nada.
-enum RecurrenceRule: Equatable, Sendable {
+/// `Hashable` es obligatorio, no decorativo: la regla se usa como `tag` de un
+/// `Picker`, y las etiquetas de selección tienen que ser hashables.
+enum RecurrenceRule: Equatable, Hashable, Sendable {
     case daily
     /// Semanal en los días indicados. Reutiliza `WeekdaySet`, el mismo tipo con
     /// el que se programan los hábitos: la pregunta «qué días de la semana» es

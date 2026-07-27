@@ -5,6 +5,7 @@ import SwiftUI
 struct CronoApp: App {
     private let container: ModelContainer
     @State private var store: HabitStore
+    @State private var reminderStore: ReminderStore
 
     /// Aviso persistente si la base en disco no se pudo abrir.
     private let storageWarning: String?
@@ -45,6 +46,7 @@ struct CronoApp: App {
         self.container = resolved
         self.storageWarning = warning
         _store = State(initialValue: HabitStore(context: resolved.mainContext))
+        _reminderStore = State(initialValue: ReminderStore(context: resolved.mainContext))
     }
 
     /// Crea `Application Support` si no existe.
@@ -70,12 +72,17 @@ struct CronoApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                .environment(reminderStore)
                 .task {
                     #if DEBUG
                     // Solo hace algo si se lanzó con `-seedSampleData`, que es
                     // lo que hace la sesión de capturas automáticas en CI.
                     LaunchArguments.seedIfNeeded(container.mainContext)
                     #endif
+
+                    // Sin al menos una lista, la pantalla de tareas sería un
+                    // callejón sin salida: no habría dónde poner la primera.
+                    reminderStore.ensureDefaultList()
 
                     if let storageWarning {
                         store.failure = StoreFailure(
