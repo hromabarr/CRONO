@@ -58,10 +58,13 @@ extension AppTab {
     /// En Release siempre es Hoy; en Debug la puede fijar un argumento de
     /// lanzamiento para las capturas automáticas.
     static var initial: AppTab {
+        // El `return` es explícito a propósito: el retorno implícito de una
+        // propiedad de una sola expresión no se lleva bien con las ramas de
+        // `#if`, porque el cuerpo deja de ser una única expresión.
         #if DEBUG
-        LaunchArguments.initialTab ?? .today
+        return LaunchArguments.initialTab ?? .today
         #else
-        .today
+        return .today
         #endif
     }
 }

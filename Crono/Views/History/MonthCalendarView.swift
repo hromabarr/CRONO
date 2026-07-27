@@ -3,15 +3,33 @@ import SwiftUI
 
 /// Calendario mensual con el progreso de cada día.
 struct MonthCalendarView: View {
-    var title: String
-    var cells: [HistoryViewModel.DayCell]
-    var weekdayInitials: [String]
-    var canGoForward: Bool
-    var accessibilityLabel: (HistoryViewModel.DayCell) -> String?
-    var onPrevious: () -> Void
-    var onNext: () -> Void
+    private let title: String
+    private let cells: [HistoryViewModel.DayCell]
+    private let weekdayInitials: [String]
+    private let canGoForward: Bool
+    private let accessibilityLabel: (HistoryViewModel.DayCell) -> String?
+    private let onPrevious: () -> Void
+    private let onNext: () -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
+
+    init(
+        title: String,
+        cells: [HistoryViewModel.DayCell],
+        weekdayInitials: [String],
+        canGoForward: Bool,
+        accessibilityLabel: @escaping (HistoryViewModel.DayCell) -> String?,
+        onPrevious: @escaping () -> Void,
+        onNext: @escaping () -> Void
+    ) {
+        self.title = title
+        self.cells = cells
+        self.weekdayInitials = weekdayInitials
+        self.canGoForward = canGoForward
+        self.accessibilityLabel = accessibilityLabel
+        self.onPrevious = onPrevious
+        self.onNext = onNext
+    }
 
     var body: some View {
         VStack(spacing: 0) {

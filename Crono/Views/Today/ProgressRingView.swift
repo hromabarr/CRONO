@@ -2,11 +2,19 @@ import SwiftUI
 
 /// Anillo que representa la fracción de hábitos completados hoy.
 struct ProgressRingView: View {
-    var fraction: Double
-    var lineWidth: CGFloat = 11
-    var tint: Color = .accentColor
+    private let fraction: Double
+    private let lineWidth: CGFloat
+    private let tint: Color
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Explícito porque hay propiedades almacenadas privadas; el sintetizado
+    /// heredaría el `private` y no sería llamable desde otro archivo.
+    init(fraction: Double, lineWidth: CGFloat = 11, tint: Color = .accentColor) {
+        self.fraction = fraction
+        self.lineWidth = lineWidth
+        self.tint = tint
+    }
 
     private var clamped: Double { min(max(fraction, 0), 1) }
 

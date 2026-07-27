@@ -11,6 +11,10 @@ struct HistoryView: View {
 
     @State private var viewModel = HistoryViewModel()
 
+    /// Necesario porque las propiedades almacenadas son privadas: el
+    /// inicializador sintetizado sería privado y exigiría `activeHabits`.
+    init() {}
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -18,7 +22,7 @@ struct HistoryView: View {
                     EmptyStateView.noHistory
                         .padding(.top, 60)
                 } else {
-                    content
+                    HistoryContent(viewModel: viewModel, habits: activeHabits)
                 }
             }
             .background(Color(.systemGroupedBackground))
@@ -26,30 +30,24 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.large)
         }
     }
+}
 
-    @ViewBuilder
-    private var content: some View {
-        let stats = viewModel.aggregateStats(for: activeHabits)
-        let streaks = viewModel.streaks(for: activeHabits)
+// MARK: - Contenido
 
+private struct HistoryContent: View {
+    let viewModel: HistoryViewModel
+    let habits: [Habit]
+
+    var body: some View {
         VStack(spacing: 0) {
-            StatsGridView(stats: stats, monthName: viewModel.monthName)
-
-            sectionLabel("Calendario")
-
-            MonthCalendarView(
-                title: viewModel.monthTitle,
-                cells: viewModel.cells(for: activeHabits),
-                weekdayInitials: AppCalendar.current.orderedWeekdayInitials,
-                canGoForward: viewModel.canGoForward,
-                accessibilityLabel: { viewModel.accessibilityLabel(for: $0) },
-                onPrevious: viewModel.goToPreviousMonth,
-                onNext: viewModel.goToNextMonth
+            StatsGridView(
+                stats: viewModel.aggregateStats(for: habits),
+                monthName: viewModel.monthName
             )
-            // El gesto se limita al calendario en lugar de a todo el contenido:
-            // un DragGesture sobre el ScrollView entero le disputa el
-            // desplazamiento vertical y lo vuelve errático.
-            .gesture(monthSwipe)
+
+            SectionLabel("Calendario")
+
+            calendar
 
             Text("El anillo de cada día indica qué fracción de los hábitos programados cumpliste.")
                 .font(.footnote)
@@ -58,23 +56,28 @@ struct HistoryView: View {
                 .padding(.top, 9)
                 .padding(.horizontal, 6)
 
-            sectionLabel("Racha por hábito")
+            SectionLabel("Racha por hábito")
 
-            VStack(spacing: 0) {
-                ForEach(Array(streaks.enumerated()), id: \.element.habit.id) { index, entry in
-                    HabitStreakRow(habit: entry.habit, streak: entry.streak)
-                        .padding(.horizontal, 16)
-
-                    if index < streaks.count - 1 {
-                        Divider().padding(.leading, 42)
-                    }
-                }
-            }
-            .padding(.vertical, 6)
-            .groupedCard()
+            StreakListCard(entries: viewModel.streaks(for: habits))
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
+    }
+
+    private var calendar: some View {
+        MonthCalendarView(
+            title: viewModel.monthTitle,
+            cells: viewModel.cells(for: habits),
+            weekdayInitials: AppCalendar.current.orderedWeekdayInitials,
+            canGoForward: viewModel.canGoForward,
+            accessibilityLabel: { viewModel.accessibilityLabel(for: $0) },
+            onPrevious: viewModel.goToPreviousMonth,
+            onNext: viewModel.goToNextMonth
+        )
+        // El gesto se limita al calendario en lugar de a todo el contenido: un
+        // DragGesture sobre el ScrollView entero le disputa el desplazamiento
+        // vertical y lo vuelve errático.
+        .gesture(monthSwipe)
     }
 
     /// Cambiar de mes deslizando sobre el calendario.
@@ -94,15 +97,24 @@ struct HistoryView: View {
                 }
             }
     }
+}
 
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 22)
-            .padding(.bottom, 8)
-            .padding(.horizontal, 4)
+private struct StreakListCard: View {
+    let entries: [(habit: Habit, streak: Int)]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(entries.enumerated()), id: \.element.habit.id) { index, entry in
+                HabitStreakRow(habit: entry.habit, streak: entry.streak)
+                    .padding(.horizontal, 16)
+
+                if index < entries.count - 1 {
+                    Divider().padding(.leading, 42)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .groupedCard()
     }
 }
 

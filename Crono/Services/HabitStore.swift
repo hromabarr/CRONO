@@ -111,7 +111,19 @@ final class HabitStore {
     /// huecos tras archivar o borrar.
     func move(_ habits: [Habit], from source: IndexSet, to destination: Int) {
         var reordered = habits
-        reordered.move(fromOffsets: source, toOffset: destination)
+
+        // El `move(fromOffsets:toOffset:)` que se usaría aquí lo aporta SwiftUI,
+        // no la biblioteca estándar. Se implementa a mano en lugar de importar
+        // SwiftUI: un servicio de datos no debe depender de un framework de
+        // interfaz para reordenar un array.
+        let moving = source.map { habits[$0] }
+        for index in source.sorted(by: >) {
+            reordered.remove(at: index)
+        }
+        // `destination` es un índice sobre el array original, así que hay que
+        // descontar los elementos extraídos que estaban antes de ese punto.
+        let removedBefore = source.filter { $0 < destination }.count
+        reordered.insert(contentsOf: moving, at: destination - removedBefore)
 
         // Se reescriben todos los índices: normalizarlos a 0..<n evita que los
         // huecos se acumulen y acaben colisionando.

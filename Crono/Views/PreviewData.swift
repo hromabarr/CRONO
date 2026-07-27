@@ -1,12 +1,19 @@
-#if DEBUG
 import Foundation
 import SwiftData
 
 /// Datos de ejemplo para las previsualizaciones de Xcode.
 ///
-/// Va entre `#if DEBUG` para que no acabe en la app publicada. Todo se monta en
-/// un contenedor en memoria: las previsualizaciones nunca tocan la base real, así
-/// que se puede marcar y desmarcar sin ensuciar los datos del dispositivo.
+/// Todo se monta en un contenedor en memoria: las previsualizaciones nunca tocan
+/// la base real, así que se puede marcar y desmarcar sin ensuciar los datos del
+/// dispositivo.
+///
+/// ## Por qué no va entre `#if DEBUG`
+///
+/// Los bloques `#Preview` se compilan en todas las configuraciones, también en
+/// Release. Si este tipo solo existiera en Debug, cada `#Preview` que lo usa
+/// dejaría de compilar al generar el `.ipa`. El coste de no aislarlo es un poco
+/// de código de ejemplo inerte en el binario; el de aislarlo sería tener que
+/// envolver quince bloques de previsualización.
 @MainActor
 enum PreviewData {
 
@@ -144,4 +151,3 @@ enum PreviewData {
         }
     }
 }
-#endif

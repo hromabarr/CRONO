@@ -7,10 +7,17 @@ import SwiftUI
 /// distinto punto de partida. El borrador vive en el ViewModel, así que nada se
 /// escribe en la base hasta pulsar Guardar y Cancelar no tiene que deshacer nada.
 struct HabitFormView: View {
-    @State var viewModel: HabitFormViewModel
+    @State private var viewModel: HabitFormViewModel
 
     @Environment(\.dismiss) private var dismiss
     @State private var showingDeleteConfirmation = false
+
+    /// Explícito por dos razones: hay propiedades almacenadas privadas —que
+    /// harían privado el inicializador sintetizado— y un `@State` se siembra
+    /// con `State(initialValue:)`, no por asignación directa.
+    init(viewModel: HabitFormViewModel) {
+        _viewModel = State(initialValue: viewModel)
+    }
 
     var body: some View {
         NavigationStack {

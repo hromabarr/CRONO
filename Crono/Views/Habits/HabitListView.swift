@@ -19,87 +19,93 @@ struct HabitListView: View {
 
     @State private var editingMode: HabitFormViewModel.Mode?
 
+    /// Necesario porque las propiedades almacenadas son privadas: el
+    /// inicializador sintetizado sería privado y exigiría los dos `@Query`.
+    init() {}
+
     var body: some View {
         NavigationStack {
-            Group {
-                if activeHabits.isEmpty && archivedHabits.isEmpty {
-                    EmptyStateView.noHabits { editingMode = .create }
-                } else {
-                    list
+            content
+                .navigationTitle("Hábitos")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar { toolbarContent }
+                .sheet(item: $editingMode) { mode in
+                    HabitFormView(
+                        viewModel: HabitFormViewModel(mode: mode, store: store)
+                    )
                 }
-            }
-            .navigationTitle("Hábitos")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { editingMode = .create } label: {
-                        Image(systemName: "plus")
-                    }
-                    .accessibilityLabel("Nuevo hábito")
-                }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if activeHabits.isEmpty && archivedHabits.isEmpty {
+            EmptyStateView.noHabits { editingMode = .create }
+        } else {
+            List {
                 if !activeHabits.isEmpty {
-                    ToolbarItem(placement: .topBarLeading) { EditButton() }
+                    ActiveHabitsSection(
+                        habits: activeHabits,
+                        store: store,
+                        onEdit: { editingMode = .edit($0) }
+                    )
                 }
-            }
-            .sheet(item: $editingMode) { mode in
-                HabitFormView(viewModel: HabitFormViewModel(mode: mode, store: store))
-            }
-        }
-    }
 
-    private var list: some View {
-        List {
-            if !activeHabits.isEmpty {
-                Section("Activos") {
-                    ForEach(activeHabits) { habit in
-                        habitRow(habit)
-                            .swipeActions(edge: .trailing) {
-                                Button {
-                                    store.archive(habit)
-                                } label: {
-                                    Label("Archivar", systemImage: "archivebox")
-                                }
-                                .tint(.orange)
-                            }
-                    }
-                    .onMove { source, destination in
-                        store.move(activeHabits, from: source, to: destination)
-                    }
-                }
-            }
-
-            if !archivedHabits.isEmpty {
-                Section {
-                    ForEach(archivedHabits) { habit in
-                        archivedRow(habit)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    store.delete(habit)
-                                } label: {
-                                    Label("Eliminar", systemImage: "trash")
-                                }
-
-                                Button {
-                                    store.unarchive(habit)
-                                } label: {
-                                    Label("Reactivar", systemImage: "arrow.uturn.backward")
-                                }
-                                .tint(.blue)
-                            }
-                    }
-                } header: {
-                    Text("Archivados")
-                } footer: {
-                    Text("Conservan su historial. Desliza para reactivarlos o eliminarlos.")
+                if !archivedHabits.isEmpty {
+                    ArchivedHabitsSection(habits: archivedHabits, store: store)
                 }
             }
         }
     }
 
-    private func habitRow(_ habit: Habit) -> some View {
-        Button {
-            editingMode = .edit(habit)
-        } label: {
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Button { editingMode = .create } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel("Nuevo hábito")
+        }
+
+        if !activeHabits.isEmpty {
+            ToolbarItem(placement: .topBarLeading) { EditButton() }
+        }
+    }
+}
+
+// MARK: - Secciones
+
+private struct ActiveHabitsSection: View {
+    let habits: [Habit]
+    let store: HabitStore
+    let onEdit: (Habit) -> Void
+
+    var body: some View {
+        Section("Activos") {
+            ForEach(habits) { habit in
+                ActiveHabitRow(habit: habit, onEdit: { onEdit(habit) })
+                    .swipeActions(edge: .trailing) {
+                        Button {
+                            store.archive(habit)
+                        } label: {
+                            Label("Archivar", systemImage: "archivebox")
+                        }
+                        .tint(.orange)
+                    }
+            }
+            .onMove { source, destination in
+                store.move(habits, from: source, to: destination)
+            }
+        }
+    }
+}
+
+private struct ActiveHabitRow: View {
+    let habit: Habit
+    let onEdit: () -> Void
+
+    var body: some View {
+        Button(action: onEdit) {
             HStack(spacing: 14) {
                 Circle()
                     .fill(habit.color.color)
@@ -123,8 +129,43 @@ struct HabitListView: View {
         .accessibilityHint("Toca para editar")
         .accessibilityAddTraits(.isButton)
     }
+}
 
-    private func archivedRow(_ habit: Habit) -> some View {
+private struct ArchivedHabitsSection: View {
+    let habits: [Habit]
+    let store: HabitStore
+
+    var body: some View {
+        Section {
+            ForEach(habits) { habit in
+                ArchivedHabitRow(habit: habit)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            store.delete(habit)
+                        } label: {
+                            Label("Eliminar", systemImage: "trash")
+                        }
+
+                        Button {
+                            store.unarchive(habit)
+                        } label: {
+                            Label("Reactivar", systemImage: "arrow.uturn.backward")
+                        }
+                        .tint(.blue)
+                    }
+            }
+        } header: {
+            Text("Archivados")
+        } footer: {
+            Text("Conservan su historial. Desliza para reactivarlos o eliminarlos.")
+        }
+    }
+}
+
+private struct ArchivedHabitRow: View {
+    let habit: Habit
+
+    var body: some View {
         HStack(spacing: 14) {
             Circle()
                 .fill(habit.color.color.opacity(0.5))
@@ -133,6 +174,7 @@ struct HabitListView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(habit.name)
                     .foregroundStyle(.secondary)
+
                 if let archivedAt = habit.archivedAt {
                     Text("Archivado el \(archivedAt.formatted(.dateTime.day().month(.wide)))")
                         .font(.footnote)
@@ -145,6 +187,8 @@ struct HabitListView: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+// MARK: - Presentación del formulario
 
 /// Permite presentar el formulario con `.sheet(item:)`, que exige identidad.
 extension HabitFormViewModel.Mode: Identifiable {

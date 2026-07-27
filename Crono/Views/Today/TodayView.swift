@@ -2,11 +2,16 @@ import SwiftData
 import SwiftUI
 
 /// Pantalla principal: qué toca hoy y cuánto llevas.
+///
+/// El cuerpo está troceado en subvistas pequeñas a propósito. Con todo el
+/// contenido en un solo `body`, el inferidor de tipos de Swift se rinde con un
+/// «unable to type-check this expression in reasonable time»: cada modificador
+/// anidado multiplica las combinaciones que tiene que resolver.
 struct TodayView: View {
     /// Lleva al usuario a la pestaña de gestión desde el estado vacío.
     /// Un botón "Crear hábito" que no navegara a ninguna parte sería peor que
     /// no ponerlo.
-    var onCreateHabit: () -> Void
+    private let onCreateHabit: () -> Void
 
     /// Los hábitos vienen de `@Query`, la fuente reactiva de SwiftData: al
     /// marcar uno, esta vista se redibuja sola. El ViewModel deriva y actúa,
@@ -22,20 +27,22 @@ struct TodayView: View {
 
     @State private var viewModel: TodayViewModel?
 
+    /// Inicializador explícito.
+    ///
+    /// Es obligatorio: al haber propiedades almacenadas `private` —el `@Query`
+    /// entre ellas—, el que sintetiza Swift también es privado y además exige
+    /// `activeHabits` como parámetro, así que `TodayView(...)` no compila desde
+    /// fuera del propio tipo.
+    init(onCreateHabit: @escaping () -> Void) {
+        self.onCreateHabit = onCreateHabit
+    }
+
     var body: some View {
         NavigationStack {
-            Group {
-                if let viewModel {
-                    content(viewModel)
-                } else {
-                    // Ventana de un solo fotograma antes de que `task` construya
-                    // el ViewModel con el store del entorno.
-                    Color(.systemGroupedBackground)
-                }
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Hoy")
-            .navigationBarTitleDisplayMode(.large)
+            container
+                .background(Color(.systemGroupedBackground))
+                .navigationTitle("Hoy")
+                .navigationBarTitleDisplayMode(.large)
         }
         .task {
             if viewModel == nil { viewModel = TodayViewModel(store: store) }
@@ -48,11 +55,32 @@ struct TodayView: View {
     }
 
     @ViewBuilder
-    private func content(_ viewModel: TodayViewModel) -> some View {
-        let scheduled = viewModel.habitsScheduledToday(from: activeHabits)
-        let progress = viewModel.progress(for: scheduled)
+    private var container: some View {
+        if let viewModel {
+            TodayContent(
+                viewModel: viewModel,
+                habits: activeHabits,
+                onCreateHabit: onCreateHabit
+            )
+        } else {
+            // Ventana de un solo fotograma antes de que `task` construya el
+            // ViewModel con el store del entorno.
+            Color(.systemGroupedBackground)
+        }
+    }
+}
 
-        if activeHabits.isEmpty {
+// MARK: - Contenido
+
+private struct TodayContent: View {
+    let viewModel: TodayViewModel
+    let habits: [Habit]
+    let onCreateHabit: () -> Void
+
+    var body: some View {
+        let scheduled = viewModel.habitsScheduledToday(from: habits)
+
+        if habits.isEmpty {
             EmptyStateView.noHabits(onCreate: onCreateHabit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if scheduled.isEmpty {
@@ -60,54 +88,64 @@ struct TodayView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                VStack(spacing: 0) {
-                    Text(viewModel.todayTitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, 12)
-
-                    TodayHeaderView(
-                        progress: progress,
-                        headline: viewModel.headline(for: progress),
-                        detail: viewModel.detail(for: progress)
-                    )
-
-                    sectionLabel("Hábitos de hoy")
-
-                    VStack(spacing: 0) {
-                        ForEach(Array(scheduled.enumerated()), id: \.element.id) { index, habit in
-                            HabitRowView(
-                                habit: habit,
-                                isCompleted: viewModel.isCompletedToday(habit),
-                                accessibilityLabel: viewModel.accessibilityLabel(for: habit),
-                                accessibilityHint: viewModel.accessibilityHint(for: habit),
-                                onToggle: { viewModel.toggle(habit) }
-                            )
-                            .padding(.horizontal, 16)
-
-                            if index < scheduled.count - 1 {
-                                Divider().padding(.leading, 58)
-                            }
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    .groupedCard()
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+                TodayScrollContent(viewModel: viewModel, scheduled: scheduled)
             }
         }
     }
+}
 
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text.uppercased())
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 22)
-            .padding(.bottom, 8)
-            .padding(.horizontal, 4)
+private struct TodayScrollContent: View {
+    let viewModel: TodayViewModel
+    let scheduled: [Habit]
+
+    var body: some View {
+        let progress = viewModel.progress(for: scheduled)
+
+        VStack(spacing: 0) {
+            Text(viewModel.todayTitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.bottom, 12)
+
+            TodayHeaderView(
+                progress: progress,
+                headline: viewModel.headline(for: progress),
+                detail: viewModel.detail(for: progress)
+            )
+
+            SectionLabel("Hábitos de hoy")
+
+            TodayHabitsCard(viewModel: viewModel, habits: scheduled)
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 24)
+    }
+}
+
+private struct TodayHabitsCard: View {
+    let viewModel: TodayViewModel
+    let habits: [Habit]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(habits.enumerated()), id: \.element.id) { index, habit in
+                HabitRowView(
+                    habit: habit,
+                    isCompleted: viewModel.isCompletedToday(habit),
+                    accessibilityLabel: viewModel.accessibilityLabel(for: habit),
+                    accessibilityHint: viewModel.accessibilityHint(for: habit),
+                    onToggle: { viewModel.toggle(habit) }
+                )
+                .padding(.horizontal, 16)
+
+                if index < habits.count - 1 {
+                    Divider().padding(.leading, 58)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .groupedCard()
     }
 }
 

@@ -12,6 +12,10 @@ struct RootView: View {
     @Environment(HabitStore.self) private var store
     @State private var selectedTab: AppTab = .initial
 
+    /// Necesario porque las propiedades almacenadas son privadas: el
+    /// inicializador sintetizado sería privado y exigiría ambas.
+    init() {}
+
     var body: some View {
         TabView(selection: $selectedTab) {
             // Los nombres dicen qué hay dentro. "Inicio" no le diría al usuario

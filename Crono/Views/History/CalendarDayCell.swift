@@ -6,10 +6,15 @@ import SwiftUI
 /// se cumplió ese día. Se dibuja como anillo y no como relleno para que el
 /// número siga siendo legible con cualquier nivel de progreso.
 struct CalendarDayCell: View {
-    var cell: HistoryViewModel.DayCell
-    var accessibilityLabel: String?
+    private let cell: HistoryViewModel.DayCell
+    private let accessibilityLabel: String?
 
     private let ringWidth: CGFloat = 3
+
+    init(cell: HistoryViewModel.DayCell, accessibilityLabel: String?) {
+        self.cell = cell
+        self.accessibilityLabel = accessibilityLabel
+    }
 
     var body: some View {
         ZStack {
