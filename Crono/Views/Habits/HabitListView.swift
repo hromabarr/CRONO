@@ -3,17 +3,8 @@ import SwiftUI
 
 /// Pantalla de gestión: crear, editar, reordenar, archivar y eliminar.
 struct HabitListView: View {
-    @Query(
-        filter: #Predicate<Habit> { $0.archivedAt == nil },
-        sort: [SortDescriptor(\Habit.sortIndex), SortDescriptor(\Habit.createdAt)]
-    )
-    private var activeHabits: [Habit]
-
-    @Query(
-        filter: #Predicate<Habit> { $0.archivedAt != nil },
-        sort: [SortDescriptor(\Habit.archivedAt, order: .reverse)]
-    )
-    private var archivedHabits: [Habit]
+    @Query(HabitQueries.active) private var activeHabits: [Habit]
+    @Query(HabitQueries.archived) private var archivedHabits: [Habit]
 
     @Environment(HabitStore.self) private var store
 

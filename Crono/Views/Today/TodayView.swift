@@ -16,11 +16,11 @@ struct TodayView: View {
 
     /// Los hábitos vienen de `@Query`, la fuente reactiva de SwiftData: al
     /// marcar uno, esta vista se redibuja sola.
-    @Query(
-        filter: #Predicate<Habit> { $0.archivedAt == nil },
-        sort: [SortDescriptor(\Habit.sortIndex), SortDescriptor(\Habit.createdAt)]
-    )
-    private var activeHabits: [Habit]
+    ///
+    /// El descriptor vive en `HabitQueries` y no escrito aquí: en línea, este
+    /// `@Query` tardaba 5.390 ms en comprobar tipos y tumbaba la compilación
+    /// del archivo.
+    @Query(HabitQueries.active) private var activeHabits: [Habit]
 
     @Environment(HabitStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase

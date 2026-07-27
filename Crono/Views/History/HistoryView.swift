@@ -3,11 +3,7 @@ import SwiftUI
 
 /// Pantalla de historial: calendario mensual y estadísticas.
 struct HistoryView: View {
-    @Query(
-        filter: #Predicate<Habit> { $0.archivedAt == nil },
-        sort: [SortDescriptor(\Habit.sortIndex), SortDescriptor(\Habit.createdAt)]
-    )
-    private var activeHabits: [Habit]
+    @Query(HabitQueries.active) private var activeHabits: [Habit]
 
     @State private var viewModel = HistoryViewModel()
 
