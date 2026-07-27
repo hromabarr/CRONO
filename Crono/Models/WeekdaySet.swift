@@ -73,8 +73,12 @@ struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
     }
 
     /// Los siete `Calendar.weekday` en el orden de presentación del usuario.
+    ///
+    /// Lee `Calendar.current.firstWeekday` en lugar de `AppCalendar.current`:
+    /// este último construye un calendario entero solo para consultar un
+    /// entero, y `AppCalendar` toma justamente ese valor de aquí.
     static var weekdayOrder: [Int] {
-        let first = AppCalendar.current.firstWeekday
+        let first = Calendar.current.firstWeekday
         return (0..<7).map { (first - 1 + $0) % 7 + 1 }
     }
 
@@ -94,14 +98,14 @@ struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
     /// Nombre corto localizado de un día ("lun"), tomado del calendario para que
     /// se traduzca con el idioma del sistema sin mantener una tabla propia.
     static func shortName(forWeekday weekday: Int) -> String {
-        let symbols = AppCalendar.current.shortWeekdaySymbols
+        let symbols = WeekdaySymbols.short
         guard (1...symbols.count).contains(weekday) else { return "" }
-        return symbols[weekday - 1].capitalized
+        return symbols[weekday - 1]
     }
 
     /// Nombre completo localizado de un día ("lunes"), para VoiceOver.
     static func fullName(forWeekday weekday: Int) -> String {
-        let symbols = AppCalendar.current.weekdaySymbols
+        let symbols = WeekdaySymbols.full
         guard (1...symbols.count).contains(weekday) else { return "" }
         return symbols[weekday - 1]
     }
@@ -110,4 +114,19 @@ struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
     static func initial(forWeekday weekday: Int) -> String {
         String(shortName(forWeekday: weekday).prefix(1))
     }
+}
+
+/// Nombres de los días, leídos una sola vez.
+///
+/// Antes cada consulta construía un `Calendar` completo y le pedía sus símbolos.
+/// `WeekdaySet.displayDescription` llama a `shortName` una vez por día
+/// seleccionado, así que una lista de diez hábitos podía levantar setenta
+/// calendarios en un solo redibujado.
+///
+/// Cachearlos en `static let` es seguro: iOS relanza la app cuando cambia el
+/// idioma del sistema, así que estos valores no pueden quedarse obsoletos
+/// mientras la app está viva.
+private enum WeekdaySymbols {
+    static let short: [String] = AppCalendar.current.shortWeekdaySymbols.map(\.capitalized)
+    static let full: [String] = AppCalendar.current.weekdaySymbols
 }

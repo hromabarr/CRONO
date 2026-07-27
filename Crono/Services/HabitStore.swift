@@ -229,6 +229,11 @@ final class HabitStore {
 
     /// Persiste y traduce el fallo a algo mostrable. Devuelve `false` si falló.
     private func save(action: String) -> Bool {
+        // Sin cambios pendientes no se toca el disco. Editar un hábito sin
+        // modificar nada, o reordenar dejándolo en el mismo sitio, no debería
+        // provocar escritura alguna ni, sobre todo, poder fallar.
+        guard context.hasChanges else { return true }
+
         do {
             try context.save()
             return true
