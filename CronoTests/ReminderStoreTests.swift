@@ -226,7 +226,9 @@ struct ReminderStoreTests {
         let b = try #require(store.createReminder(title: "B", in: list))
         let c = try #require(store.createReminder(title: "C", in: list))
 
-        #expect([a.sortIndex, b.sortIndex, c.sortIndex] == [0, 1, 2])
+        let indices: [Int] = [a.sortIndex, b.sortIndex, c.sortIndex]
+        let expected: [Int] = [0, 1, 2]
+        #expect(indices == expected)
     }
 
     @Test("Reordenar normaliza los índices sin huecos")
@@ -241,8 +243,13 @@ struct ReminderStoreTests {
         store.moveReminders(ordered, from: IndexSet(integer: 2), to: 0)
 
         let after = list.reminders.sorted { $0.sortIndex < $1.sortIndex }
-        #expect(after.map(\.title) == ["C", "A", "B"])
-        #expect(after.map(\.sortIndex) == [0, 1, 2])
+        let titles: [String] = after.map { $0.title }
+        let expectedTitles: [String] = ["C", "A", "B"]
+        #expect(titles == expectedTitles)
+
+        let indices: [Int] = after.map { $0.sortIndex }
+        let expectedIndices: [Int] = [0, 1, 2]
+        #expect(indices == expectedIndices)
     }
 
     // MARK: - Filtros
@@ -260,7 +267,9 @@ struct ReminderStoreTests {
 
         // SwiftData ordena `nil` primero; una tarea sin vencimiento no debe
         // encabezar una lista ordenada por urgencia.
-        #expect(sorted.map(\.title) == ["Mañana", "Pasado mañana", "Sin fecha"])
+        let titles: [String] = sorted.map { $0.title }
+        let expectedTitles: [String] = ["Mañana", "Pasado mañana", "Sin fecha"]
+        #expect(titles == expectedTitles)
     }
 
     @Test("Las subtareas no cuentan como tareas de nivel superior")
@@ -288,13 +297,24 @@ struct ReminderStoreTests {
             store.createReminder(title: "Regar", in: list, recurrence: weekly)
         )
 
-        #expect(reminder.recurrence == weekly)
+        // Se compara por `rawValue`, que es `String`, y no por valor de enum.
+        //
+        // `RecurrenceRule?` contra un `RecurrenceRule` —o peor, contra un
+        // miembro implícito como `.daily`— dentro de la expansión de `#expect`
+        // dejaba al compilador sin poder elegir sobrecarga de `==`. La macro
+        // envuelve los operandos en capturas genéricas, y ahí el tipo del lado
+        // derecho queda menos determinado que en una comparación normal.
+        //
+        // Comparar cadenas no tiene esa duda y además comprueba exactamente lo
+        // que interesa: que el viaje a la base de datos y de vuelta no pierde la
+        // máscara de días.
+        #expect(reminder.recurrence?.rawValue == weekly.rawValue)
         // La máscara viaja dentro de la cadena: `weekly:42`.
         #expect(reminder.recurrenceRaw == "weekly:42")
 
-        #expect(RecurrenceRule(rawValue: "daily") == .daily)
-        #expect(RecurrenceRule(rawValue: "monthly") == .monthly)
-        #expect(RecurrenceRule(rawValue: "yearly") == .yearly)
+        #expect(RecurrenceRule(rawValue: "daily")?.rawValue == "daily")
+        #expect(RecurrenceRule(rawValue: "monthly")?.rawValue == "monthly")
+        #expect(RecurrenceRule(rawValue: "yearly")?.rawValue == "yearly")
         #expect(RecurrenceRule(rawValue: "basura") == nil)
         #expect(RecurrenceRule(rawValue: "weekly:sinnúmero") == nil)
     }
