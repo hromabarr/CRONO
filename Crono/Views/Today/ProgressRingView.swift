@@ -21,7 +21,7 @@ struct ProgressRingView: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(Color(.tertiarySystemFill), lineWidth: lineWidth)
+                .stroke(Color(uiColor: .tertiarySystemFill), lineWidth: lineWidth)
 
             Circle()
                 .trim(from: 0, to: clamped)

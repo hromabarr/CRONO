@@ -20,7 +20,7 @@ struct CalendarDayCell: View {
         ZStack {
             if cell.state != .blank {
                 Circle()
-                    .stroke(Color(.tertiarySystemFill), lineWidth: ringWidth)
+                    .stroke(Color(uiColor: .tertiarySystemFill), lineWidth: ringWidth)
 
                 if cell.fraction > 0 {
                     Circle()
@@ -65,7 +65,7 @@ struct CalendarDayCell: View {
         switch cell.state {
         case .blank: .clear
         case .today: .accentColor
-        case .future: Color(.tertiaryLabel)
+        case .future: Color(uiColor: .tertiaryLabel)
         case .past: .primary
         }
     }

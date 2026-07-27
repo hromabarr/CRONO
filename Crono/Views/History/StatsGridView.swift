@@ -89,7 +89,7 @@ struct HabitStreakRow: View {
             .foregroundStyle(.secondary)
             .padding(.vertical, 3)
             .padding(.horizontal, 9)
-            .background(Color(.tertiarySystemFill), in: Capsule())
+            .background(Color(uiColor: .tertiarySystemFill), in: Capsule())
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .ignore)
@@ -113,5 +113,5 @@ struct HabitStreakRow: View {
         )
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    .background(Color(uiColor: .systemGroupedBackground))
 }

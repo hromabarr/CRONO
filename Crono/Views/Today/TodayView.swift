@@ -3,10 +3,11 @@ import SwiftUI
 
 /// Pantalla principal: qué toca hoy y cuánto llevas.
 ///
-/// El cuerpo está troceado en subvistas pequeñas a propósito. Con todo el
-/// contenido en un solo `body`, el inferidor de tipos de Swift se rinde con un
-/// «unable to type-check this expression in reasonable time»: cada modificador
-/// anidado multiplica las combinaciones que tiene que resolver.
+/// Todo lo que se puede calcular fuera del `body` está fuera. Los cierres de
+/// `ViewBuilder` son el sitio donde más le cuesta trabajar al inferidor de tipos
+/// de Swift: cada declaración local, cada rama y cada comparación con opcionales
+/// que mete ahí multiplica las combinaciones que tiene que resolver, hasta
+/// rendirse con «unable to type-check this expression in reasonable time».
 struct TodayView: View {
     /// Lleva al usuario a la pestaña de gestión desde el estado vacío.
     /// Un botón "Crear hábito" que no navegara a ninguna parte sería peor que
@@ -39,19 +40,17 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack {
-            container
-                .background(Color(.systemGroupedBackground))
-                .navigationTitle("Hoy")
-                .navigationBarTitleDisplayMode(.large)
+            screen
         }
-        .task {
-            if viewModel == nil { viewModel = TodayViewModel(store: store) }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            // Si la app se quedó abierta y cruzó la medianoche, "hoy" apunta a
-            // ayer y la lista mostraría las marcas equivocadas.
-            if phase == .active { viewModel?.refreshToday() }
-        }
+        .task(prepareViewModel)
+        .onChange(of: scenePhase, refreshOnActivation)
+    }
+
+    private var screen: some View {
+        container
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle(Text("Hoy"))
+            .navigationBarTitleDisplayMode(.large)
     }
 
     @ViewBuilder
@@ -65,7 +64,24 @@ struct TodayView: View {
         } else {
             // Ventana de un solo fotograma antes de que `task` construya el
             // ViewModel con el store del entorno.
-            Color(.systemGroupedBackground)
+            Color(uiColor: .systemGroupedBackground)
+        }
+    }
+
+    /// Las acciones son métodos con nombre en lugar de cierres en línea: así los
+    /// modificadores del `body` quedan con una sola forma posible.
+    @Sendable
+    private func prepareViewModel() async {
+        if viewModel == nil {
+            viewModel = TodayViewModel(store: store)
+        }
+    }
+
+    private func refreshOnActivation(_ old: ScenePhase, _ new: ScenePhase) {
+        // Si la app se quedó abierta y cruzó la medianoche, "hoy" apunta a ayer
+        // y la lista mostraría las marcas equivocadas.
+        if new == .active {
+            viewModel?.refreshToday()
         }
     }
 }
@@ -77,20 +93,27 @@ private struct TodayContent: View {
     let habits: [Habit]
     let onCreateHabit: () -> Void
 
-    var body: some View {
-        let scheduled = viewModel.habitsScheduledToday(from: habits)
+    /// Fuera del `body`: una declaración local dentro de un `ViewBuilder` es una
+    /// de las cosas que más encarecen la inferencia de tipos.
+    private var scheduled: [Habit] {
+        viewModel.habitsScheduledToday(from: habits)
+    }
 
+    @ViewBuilder
+    var body: some View {
         if habits.isEmpty {
-            EmptyStateView.noHabits(onCreate: onCreateHabit)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            filling { EmptyStateView.noHabits(onCreate: onCreateHabit) }
         } else if scheduled.isEmpty {
-            EmptyStateView.nothingToday
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            filling { EmptyStateView.nothingToday }
         } else {
             ScrollView {
                 TodayScrollContent(viewModel: viewModel, scheduled: scheduled)
             }
         }
+    }
+
+    private func filling<Content: View>(_ content: () -> Content) -> some View {
+        content().frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -98,28 +121,36 @@ private struct TodayScrollContent: View {
     let viewModel: TodayViewModel
     let scheduled: [Habit]
 
+    private var progress: TodayViewModel.DayProgress {
+        viewModel.progress(for: scheduled)
+    }
+
     var body: some View {
-        let progress = viewModel.progress(for: scheduled)
-
         VStack(spacing: 0) {
-            Text(viewModel.todayTitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 12)
-
-            TodayHeaderView(
-                progress: progress,
-                headline: viewModel.headline(for: progress),
-                detail: viewModel.detail(for: progress)
-            )
-
+            dateHeader
+            summary
             SectionLabel("Hábitos de hoy")
-
             TodayHabitsCard(viewModel: viewModel, habits: scheduled)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
+    }
+
+    private var dateHeader: some View {
+        Text(viewModel.todayTitle)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 12)
+    }
+
+    private var summary: some View {
+        let current = progress
+        return TodayHeaderView(
+            progress: current,
+            headline: viewModel.headline(for: current),
+            detail: viewModel.detail(for: current)
+        )
     }
 }
 
@@ -127,26 +158,39 @@ private struct TodayHabitsCard: View {
     let viewModel: TodayViewModel
     let habits: [Habit]
 
-    private var firstID: UUID? { habits.first?.id }
+    /// Fila ya resuelta: se sabe de antemano si lleva separador delante.
+    ///
+    /// Calcularlo aquí evita comparar `habit.id` con un `UUID?` dentro del
+    /// `ForEach`; esa comparación obliga al inferidor a promover a opcional y a
+    /// recorrer las sobrecargas genéricas de `!=` en pleno `ViewBuilder`.
+    private struct Row: Identifiable {
+        let habit: Habit
+        let showsDivider: Bool
+
+        var id: UUID { habit.id }
+    }
+
+    private var rows: [Row] {
+        habits.enumerated().map { index, habit in
+            Row(habit: habit, showsDivider: index > 0)
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(habits) { habit in
-                // Separador delante de todas menos la primera: así no hace falta
-                // el índice, y con él desaparece el `Array(...enumerated())` con
-                // `id:` por key path que atascaba al inferidor de tipos.
-                if habit.id != firstID {
+            ForEach(rows) { row in
+                if row.showsDivider {
                     Divider().padding(.leading, 58)
                 }
 
-                row(habit)
+                habitRow(row.habit)
             }
         }
         .padding(.vertical, 6)
         .groupedCard()
     }
 
-    private func row(_ habit: Habit) -> some View {
+    private func habitRow(_ habit: Habit) -> some View {
         HabitRowView(
             habit: habit,
             isCompleted: viewModel.isCompletedToday(habit),

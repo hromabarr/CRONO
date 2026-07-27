@@ -28,7 +28,7 @@ struct WeekdayPickerView: View {
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
                 .background(
-                    Circle().fill(selected ? Color.accentColor : Color(.tertiarySystemFill))
+                    Circle().fill(selected ? Color.accentColor : Color(uiColor: .tertiarySystemFill))
                 )
         }
         .buttonStyle(.pressable)

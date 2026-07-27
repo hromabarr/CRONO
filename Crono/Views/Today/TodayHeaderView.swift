@@ -55,5 +55,5 @@ struct TodayHeaderView: View {
         )
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    .background(Color(uiColor: .systemGroupedBackground))
 }

@@ -26,7 +26,7 @@ struct HabitListView: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle("Hábitos")
+                .navigationTitle(Text("Hábitos"))
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar { toolbarContent }
                 .sheet(item: $editingMode) { mode in

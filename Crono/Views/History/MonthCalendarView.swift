@@ -95,7 +95,7 @@ struct MonthCalendarView: View {
             Image(systemName: systemImage)
                 .font(.subheadline.weight(.semibold))
                 .frame(width: 32, height: 32)
-                .background(Color(.tertiarySystemFill), in: Circle())
+                .background(Color(uiColor: .tertiarySystemFill), in: Circle())
         }
         .buttonStyle(.pressable)
         .disabled(!enabled)
@@ -121,6 +121,6 @@ struct MonthCalendarView: View {
         )
         .padding(20)
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color(uiColor: .systemGroupedBackground))
     .modelContainer(container)
 }

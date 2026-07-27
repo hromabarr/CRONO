@@ -56,7 +56,19 @@ final class TodayViewModel {
     func habitsScheduledToday(from habits: [Habit]) -> [Habit] {
         habits
             .filter { $0.isActive && $0.isScheduled(on: today, calendar: calendar) }
-            .sorted { ($0.sortIndex, $0.createdAt) < ($1.sortIndex, $1.createdAt) }
+            .sorted(by: Self.byUserOrder)
+    }
+
+    /// Orden del usuario, con la fecha de creación como desempate.
+    ///
+    /// Se compara campo a campo en lugar de con tuplas: `(a, b) < (c, d)` obliga
+    /// al compilador a recorrer las sobrecargas de `<` para cada aridad de tupla,
+    /// y es uno de los encadenados que más encarecen la inferencia de tipos.
+    private static func byUserOrder(_ lhs: Habit, _ rhs: Habit) -> Bool {
+        if lhs.sortIndex != rhs.sortIndex {
+            return lhs.sortIndex < rhs.sortIndex
+        }
+        return lhs.createdAt < rhs.createdAt
     }
 
     func isCompletedToday(_ habit: Habit) -> Bool {

@@ -15,7 +15,7 @@ extension View {
     /// adapta solo al Modo Oscuro y a los ajustes de contraste.
     func groupedCard(cornerRadius: CGFloat = 18) -> some View {
         background(
-            Color(.secondarySystemGroupedBackground),
+            Color(uiColor: .secondarySystemGroupedBackground),
             in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         )
     }

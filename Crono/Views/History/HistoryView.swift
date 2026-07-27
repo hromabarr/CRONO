@@ -25,8 +25,8 @@ struct HistoryView: View {
                     HistoryContent(viewModel: viewModel, habits: activeHabits)
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Historial")
+            .background(Color(uiColor: .systemGroupedBackground))
+            .navigationTitle(Text("Historial"))
             .navigationBarTitleDisplayMode(.large)
         }
     }
