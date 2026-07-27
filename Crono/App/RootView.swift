@@ -12,8 +12,10 @@ struct RootView: View {
     @Environment(HabitStore.self) private var store
     @State private var selectedTab: AppTab = .initial
 
+    @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .system
+
     /// Necesario porque las propiedades almacenadas son privadas: el
-    /// inicializador sintetizado sería privado y exigiría ambas.
+    /// inicializador sintetizado sería privado y las exigiría todas.
     init() {}
 
     var body: some View {
@@ -46,6 +48,9 @@ struct RootView: View {
             // app pareciera haber guardado algo que no guardó.
             Text(failure.message)
         }
+        // `nil` en modo automático: no fuerza nada y la app hereda el ajuste de
+        // iOS, incluido el cambio al anochecer.
+        .preferredColorScheme(appearance.colorScheme)
     }
 }
 

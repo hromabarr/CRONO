@@ -26,6 +26,7 @@ struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel = TodayViewModel()
+    @State private var showingSettings = false
 
     /// Inicializador explícito.
     ///
@@ -59,6 +60,20 @@ struct TodayView: View {
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(Text("Hoy"))
         .navigationBarTitleDisplayMode(.large)
+        // Los ajustes cuelgan de la pantalla de inicio y no de una cuarta
+        // pestaña: la barra es para contenido. En Hábitos habría competido con
+        // el «+» y el botón de editar.
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showingSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Ajustes")
+            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
     }
 
     /// La escritura la pide la vista al store, que sigue siendo el único punto
