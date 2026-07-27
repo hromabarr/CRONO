@@ -76,30 +76,55 @@ jobs:
       # El log de xcodebuild son miles de líneas y GitHub solo anota
       # «exit code 65», que no dice nada. Esto extrae lo único que importa
       # para poder arreglarlo sin tener que bucear en el log entero.
+      # El diagnóstico se publica en tres sitios para que no haya que bucear en
+      # el log: como anotaciones de GitHub (aparecen arriba en la página del
+      # run), como resumen del job (una página propia) y en la consola.
       - name: Resumen de errores
         if: failure()
         run: |
-          strip() { sed 's|/Users/runner/work/CRONO/CRONO/||'; }
+          ROOT="/Users/runner/work/CRONO/CRONO/"
 
+          # ── Anotaciones: un error por línea, con archivo y número de línea ──
+          awk -v root="$ROOT" '
+            /\.swift:[0-9]+:[0-9]+: error: /{
+              line = $0
+              sub(root, "", line)
+              split(line, part, ":")
+              idx = index(line, "error: ")
+              msg = substr(line, idx + 7)
+              key = part[1] ":" part[2] ":" msg
+              if (!seen[key]++) printf "::error file=%s,line=%s::%s\n", part[1], part[2], msg
+            }
+          ' xcodebuild.log | head -40
+
+          errores=$(grep -E "error: " xcodebuild.log | sed "s|$ROOT||" | sort -u | head -60)
+
+          # Las banderas -warn-long-* nombran cada función y expresión que pasa
+          # de 200 ms. Ordenarlas por milisegundos señala dónde se atasca el
+          # inferidor, en lugar de tener que deducirlo.
+          lentas=$(grep -oE "[^ ]+\.swift:[0-9]+:[0-9]+: warning: [^:]*took [0-9]+ms to type-check" \
+            xcodebuild.log | sed "s|$ROOT||" | sort -u \
+            | sed -E 's/.*took ([0-9]+)ms.*/\1 &/' | sort -rn | cut -d' ' -f2- | head -25)
+
+          # ── Resumen del job ──
+          {
+            echo "## Errores"
+            echo '```'
+            echo "${errores:-(ninguna línea con 'error:')}"
+            echo '```'
+            echo "## Lo más lento de comprobar tipos"
+            echo "Ordenado de mayor a menor. El culpable suele estar arriba."
+            echo '```'
+            echo "${lentas:-(ninguna; puede que el fallo no sea de inferencia de tipos)}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # ── Consola ──
           echo "════════════════ ERRORES ════════════════"
-          echo "(con archivo:línea — es lo que hace falta para arreglarlos)"
-          grep -E "error:" xcodebuild.log | strip | sort -u | head -80 \
-            || echo "(ninguna línea 'error:')"
-
+          echo "${errores:-(ninguno)}"
           echo ""
           echo "═══════ LO MÁS LENTO DE COMPROBAR TIPOS ═══════"
-          echo "(ordenado de mayor a menor; el culpable suele estar arriba)"
-          # Las banderas -warn-long-* nombran cada función y expresión que pasa
-          # de 200 ms. Ordenarlas por milisegundos señala directamente dónde se
-          # atasca el inferidor, en vez de tener que deducirlo.
-          grep -oE "[^ ]+\.swift:[0-9]+:[0-9]+: warning: .* took [0-9]+ms to type-check[^)]*\)" \
-            xcodebuild.log | strip | sort -u \
-            | sed -E 's/.* took ([0-9]+)ms/\1ms &/' | sort -rn | cut -d' ' -f2- | head -25 \
-            || echo "(ninguna; puede que el fallo no sea de inferencia de tipos)"
-
-          echo ""
-          echo "════════════ COMANDOS FALLIDOS ════════════"
-          sed -n '/The following build commands failed/,$p' xcodebuild.log | head -30
+          echo "${lentas:-(ninguna)}"
 
       - name: Guardar el log completo
         if: failure()

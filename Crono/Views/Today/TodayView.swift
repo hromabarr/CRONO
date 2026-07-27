@@ -155,14 +155,14 @@ private struct TodayHabitsCard: View {
 
     /// Fila ya resuelta: se sabe de antemano si lleva separador delante.
     ///
-    /// Calcularlo aquí evita comparar `habit.id` con un `UUID?` dentro del
+    /// Calcularlo aquí evita comparar `habit.uuid` con un `UUID?` dentro del
     /// `ForEach`; esa comparación obliga al inferidor a promover a opcional y a
     /// recorrer las sobrecargas genéricas de `!=` en pleno `ViewBuilder`.
     private struct Row: Identifiable {
         let habit: Habit
         let showsDivider: Bool
 
-        var id: UUID { habit.id }
+        var id: UUID { habit.uuid }
     }
 
     private var rows: [Row] {

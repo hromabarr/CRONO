@@ -204,7 +204,7 @@ final class HistoryViewModel {
         let habit: Habit
         let streak: Int
 
-        var id: UUID { habit.id }
+        var id: UUID { habit.uuid }
     }
 
     /// Racha actual de cada hábito, de mayor a menor.

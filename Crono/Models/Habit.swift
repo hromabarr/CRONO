@@ -11,7 +11,7 @@ import SwiftData
 final class Habit {
     /// Identidad estable, independiente del `PersistentIdentifier` de SwiftData.
     /// Sirve para referenciar el hábito desde la UI sin arrastrar el objeto.
-    @Attribute(.unique) var id: UUID
+    @Attribute(.unique) var uuid: UUID
 
     var name: String
 
@@ -45,7 +45,7 @@ final class Habit {
     var completions: [HabitCompletion]
 
     init(
-        id: UUID = UUID(),
+        uuid: UUID = UUID(),
         name: String,
         notes: String = "",
         color: HabitColor = .default,
@@ -54,7 +54,7 @@ final class Habit {
         archivedAt: Date? = nil,
         sortIndex: Int = 0
     ) {
-        self.id = id
+        self.uuid = uuid
         self.name = name
         self.notes = notes
         self.colorRaw = color.rawValue

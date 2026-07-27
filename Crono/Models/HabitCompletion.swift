@@ -14,7 +14,7 @@ final class HabitCompletion {
     /// cuando el historial acumula miles de registros.
     #Index<HabitCompletion>([\.dayKey])
 
-    @Attribute(.unique) var id: UUID
+    @Attribute(.unique) var uuid: UUID
 
     /// Día de calendario al que corresponde, en formato `yyyyMMdd`.
     /// Indexado porque la vista de historial consulta por rangos de mes.
@@ -33,12 +33,12 @@ final class HabitCompletion {
     var habit: Habit?
 
     init(
-        id: UUID = UUID(),
+        uuid: UUID = UUID(),
         dayKey: DayKey,
         completedAt: Date = .now,
         habit: Habit? = nil
     ) {
-        self.id = id
+        self.uuid = uuid
         self.dayKey = dayKey
         self.completedAt = completedAt
         self.habit = habit

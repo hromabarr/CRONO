@@ -71,7 +71,7 @@ struct HabitRowView: View {
                 // cuesta al inferidor más de lo que vale y el segundo exigiría
                 // que `Habit` fuese `Equatable`, que en una clase `@Model` no
                 // está garantizado.
-                isCompleted: (sample.firstIndex { $0.id == habit.id } ?? 0).isMultiple(of: 2),
+                isCompleted: (sample.firstIndex { $0.uuid == habit.uuid } ?? 0).isMultiple(of: 2),
                 accessibilityLabel: habit.name,
                 accessibilityHint: "Toca para marcar",
                 onToggle: {}

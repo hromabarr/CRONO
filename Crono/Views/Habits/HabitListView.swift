@@ -211,7 +211,7 @@ extension HabitFormViewModel.Mode: Identifiable {
     var id: String {
         switch self {
         case .create: "create"
-        case let .edit(habit): habit.id.uuidString
+        case let .edit(habit): habit.uuid.uuidString
         }
     }
 }
