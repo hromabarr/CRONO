@@ -148,11 +148,25 @@ extension Reminder {
     var isTopLevel: Bool { parent == nil }
 
     /// Subtareas hechas frente al total, para el indicador «2 de 5».
-    var subtaskProgress: (completed: Int, total: Int) {
+    ///
+    /// Tipo con nombre y no una tupla `(completed:total:)`: esto se lee dentro de
+    /// una fila, o sea dentro de un `ViewBuilder`, y las tuplas con etiquetas
+    /// atravesando un builder ya hicieron que el compilador se rindiera una vez
+    /// en este proyecto.
+    struct SubtaskProgress: Equatable, Sendable {
+        var completed: Int
+        var total: Int
+
+        var isEmpty: Bool { total == 0 }
+        var isComplete: Bool { total > 0 && completed == total }
+        var text: String { "\(completed) de \(total)" }
+    }
+
+    var subtaskProgress: SubtaskProgress {
         var completed = 0
         for subtask in subtasks where subtask.isCompleted {
             completed += 1
         }
-        return (completed, subtasks.count)
+        return SubtaskProgress(completed: completed, total: subtasks.count)
     }
 }
