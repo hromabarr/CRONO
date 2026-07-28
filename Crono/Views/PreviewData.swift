@@ -23,7 +23,7 @@ enum PreviewData {
         let container: ModelContainer
         do {
             container = try ModelContainer(
-                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self,
+                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
                 configurations: configuration
             )
         } catch {
@@ -39,7 +39,7 @@ enum PreviewData {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
             return try ModelContainer(
-                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self,
+                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
                 configurations: configuration
             )
         } catch {
@@ -53,6 +53,12 @@ enum PreviewData {
 
     static func reminderStore(for container: ModelContainer) -> ReminderStore {
         ReminderStore(context: container.mainContext)
+    }
+
+    /// El planificador es el que no toca el sistema: una previsualización no debe
+    /// registrar alarmas de verdad en el dispositivo.
+    static func alarmStore(for container: ModelContainer) -> AlarmStore {
+        AlarmStore(context: container.mainContext, scheduler: NoopAlarmScheduler())
     }
 
     // MARK: - Contenido
@@ -122,8 +128,36 @@ enum PreviewData {
         context.insert(archived)
 
         populateReminders(context, calendar: calendar, today: today)
+        populateAlarms(context)
 
         try? context.save()
+    }
+
+    /// Alarmas de ejemplo, con casos distintos a propósito.
+    ///
+    /// Una activada y registrada, una desactivada, y una activa **sin** registrar
+    /// en el sistema — que es el estado que la interfaz tiene que saber contar,
+    /// porque es el peor: el usuario cree que va a sonar y no va a sonar.
+    private static func populateAlarms(_ context: ModelContext) {
+        let specs: [(String, Int, WeekdaySet, Bool, UUID?)] = [
+            ("Despertar", 7 * 60, .weekdays, true, UUID()),
+            ("Fin de semana", 9 * 60 + 30, .weekend, true, UUID()),
+            ("Siesta", 15 * 60, [], false, nil),
+            ("Gimnasio", 6 * 60 + 45, [.tuesday, .thursday], true, nil)
+        ]
+
+        for (index, spec) in specs.enumerated() {
+            let (label, minute, schedule, enabled, systemID) = spec
+            let alarm = AlarmItem(
+                label: label,
+                minuteOfDay: minute,
+                schedule: schedule,
+                isEnabled: enabled,
+                sortIndex: index,
+                systemAlarmID: systemID
+            )
+            context.insert(alarm)
+        }
     }
 
     /// Listas y tareas de ejemplo.

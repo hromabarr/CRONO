@@ -58,6 +58,12 @@ targets:
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false
+        # Obligatoria para AlarmKit. Sin ella, la petición de permiso falla en
+        # silencio: no aparece diálogo y el estado se queda en "no determinado",
+        # sin error que lo explique.
+        NSAlarmKitUsageDescription: >-
+          Crono necesita permiso para poner alarmas y despertarte a la hora que
+          programes, incluso con el móvil en silencio.
         # Solo retrato en iPhone: la app es una lista vertical, el paisaje no aporta.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

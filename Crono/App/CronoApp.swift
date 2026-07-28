@@ -6,6 +6,7 @@ struct CronoApp: App {
     private let container: ModelContainer
     @State private var store: HabitStore
     @State private var reminderStore: ReminderStore
+    @State private var alarmStore: AlarmStore
 
     /// Aviso persistente si la base en disco no se pudo abrir.
     private let storageWarning: String?
@@ -13,7 +14,8 @@ struct CronoApp: App {
     init() {
         let schema = Schema([
             Habit.self, HabitCompletion.self,
-            ReminderList.self, Reminder.self
+            ReminderList.self, Reminder.self,
+            AlarmItem.self
         ])
         var warning: String?
         let resolved: ModelContainer
@@ -47,6 +49,18 @@ struct CronoApp: App {
         self.storageWarning = warning
         _store = State(initialValue: HabitStore(context: resolved.mainContext))
         _reminderStore = State(initialValue: ReminderStore(context: resolved.mainContext))
+
+        // El planificador real solo existe si AlarmKit está disponible; si no, la
+        // app guarda y lista alarmas igual, y la interfaz avisa de que no van a
+        // sonar. Es mejor que no poder crearlas.
+        #if canImport(AlarmKit)
+        let scheduler: any AlarmScheduling = AlarmKitScheduler()
+        #else
+        let scheduler: any AlarmScheduling = NoopAlarmScheduler(authorization: .unavailable)
+        #endif
+        _alarmStore = State(
+            initialValue: AlarmStore(context: resolved.mainContext, scheduler: scheduler)
+        )
     }
 
     /// Crea `Application Support` si no existe.
@@ -73,6 +87,7 @@ struct CronoApp: App {
             RootView()
                 .environment(store)
                 .environment(reminderStore)
+                .environment(alarmStore)
                 .task {
                     #if DEBUG
                     // Solo hace algo si se lanzó con `-seedSampleData`, que es
@@ -83,6 +98,10 @@ struct CronoApp: App {
                     // Sin al menos una lista, la pantalla de tareas sería un
                     // callejón sin salida: no habría dónde poner la primera.
                     reminderStore.ensureDefaultList()
+
+                    // Las alarmas del sistema se pierden al reinstalar la app; una
+                    // que el usuario ve activada tiene que volver a sonar.
+                    await alarmStore.resyncAll()
 
                     if let storageWarning {
                         store.failure = StoreFailure(

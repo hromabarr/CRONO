@@ -4,18 +4,20 @@ import SwiftUI
 ///
 /// Historial no está: es una pantalla que se abre desde Hábitos, no una sección
 /// al mismo nivel. El historial *es* de los hábitos, y sacarlo de la barra deja
-/// el sitio que necesitan las tareas y, más adelante, las alarmas — sin llegar a
+/// el sitio que necesitan las tareas y las alarmas — sin llegar a
 /// cinco pestañas, que es más de lo que una barra sostiene con comodidad.
 enum AppTab: Hashable {
     case today
     case reminders
     case habits
+    case alarms
 }
 
 /// Contenedor de pestañas, apariencia y presentación de errores.
 struct RootView: View {
     @Environment(HabitStore.self) private var store
     @Environment(ReminderStore.self) private var reminderStore
+    @Environment(AlarmStore.self) private var alarmStore
 
     @State private var selectedTab: AppTab = .initial
 
@@ -40,6 +42,10 @@ struct RootView: View {
             Tab("Hábitos", systemImage: "repeat", value: AppTab.habits) {
                 HabitListView()
             }
+
+            Tab("Alarmas", systemImage: "alarm", value: AppTab.alarms) {
+                AlarmListView()
+            }
         }
         .alert(
             "Algo ha fallado",
@@ -60,17 +66,18 @@ struct RootView: View {
         .preferredColorScheme(appearance.colorScheme)
     }
 
-    /// Los dos almacenes comparten una sola alerta.
+    /// Los tres almacenes comparten una sola alerta.
     ///
     /// Dos `.alert` en la misma vista compiten por presentarse y uno se pierde;
-    /// además, al usuario le da igual cuál de los dos subsistemas falló.
+    /// además, al usuario le da igual cuál de los tres subsistemas falló.
     private var failure: StoreFailure? {
-        store.failure ?? reminderStore.failure
+        store.failure ?? reminderStore.failure ?? alarmStore.failure
     }
 
     private func clearFailure() {
         store.failure = nil
         reminderStore.failure = nil
+        alarmStore.failure = nil
     }
 }
 
@@ -81,4 +88,5 @@ struct RootView: View {
         .modelContainer(container)
         .environment(PreviewData.store(for: container))
         .environment(PreviewData.reminderStore(for: container))
+        .environment(PreviewData.alarmStore(for: container))
 }

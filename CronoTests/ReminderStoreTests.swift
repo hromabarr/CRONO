@@ -19,7 +19,7 @@ struct ReminderStoreTests {
     func makeStore() throws -> (store: ReminderStore, context: ModelContext) {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self,
+            for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
             configurations: configuration
         )
         let context = ModelContext(container)

@@ -19,7 +19,7 @@ enum LaunchArguments {
         ProcessInfo.processInfo.arguments.contains("-seedSampleData")
     }
 
-    /// `-startTab today|reminders|habits` abre directamente esa sección.
+    /// `-startTab today|reminders|habits|alarms` abre directamente esa sección.
     ///
     /// Ya no acepta `history`: Historial dejó de ser pestaña y se abre empujado
     /// desde Hábitos, así que un argumento de lanzamiento no puede llegar hasta
@@ -34,6 +34,7 @@ enum LaunchArguments {
         case "today": return .today
         case "reminders": return .reminders
         case "habits": return .habits
+        case "alarms": return .alarms
         default: return nil
         }
     }
