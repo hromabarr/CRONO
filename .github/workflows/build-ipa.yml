@@ -243,7 +243,7 @@ jobs:
           for apariencia in light dark; do
             xcrun simctl ui "$UDID" appearance "$apariencia"
 
-            for pestana in today history habits; do
+            for pestana in today reminders habits; do
               # Terminar antes de relanzar: sin esto, simctl reactiva la
               # instancia existente y los argumentos nuevos se ignoran, así
               # que las tres capturas saldrían de la misma pestaña.
