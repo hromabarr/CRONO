@@ -21,14 +21,6 @@ struct AlarmListView: View {
                     AlarmFormView(mode: mode)
                 }
         }
-        .task {
-            // Se pide al abrir la pestaña, no al arrancar la app: pedir permisos
-            // antes de que el usuario haya mostrado interés es la forma más
-            // rápida de que los deniegue.
-            if store.authorization == .notDetermined {
-                await store.requestAuthorization()
-            }
-        }
     }
 
     @ViewBuilder
@@ -87,12 +79,13 @@ struct AlarmListView: View {
     /// está puesta.
     private var authorizationNotice: String? {
         switch store.authorization {
-        case .authorized:
+        case .authorized, .notDetermined:
+            // Con `.notDetermined` no se avisa de nada: el permiso se pide al
+            // crear una alarma, y advertir de algo que aún no se ha preguntado
+            // es ruido.
             return nil
         case .denied:
             return "Crono no tiene permiso para poner alarmas, así que estas no van a sonar. Puedes concederlo en Ajustes de iOS."
-        case .notDetermined:
-            return "Falta conceder el permiso de alarmas. Hasta entonces, estas no sonarán."
         case .unavailable:
             return "Este dispositivo no permite que Crono ponga alarmas del sistema. Se guardan, pero no sonarán."
         }

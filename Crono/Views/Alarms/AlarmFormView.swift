@@ -67,6 +67,20 @@ struct AlarmFormView: View {
             .navigationTitle(Text(editingAlarm == nil ? "Nueva alarma" : "Editar alarma"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbarContent }
+            .task {
+                // El permiso se pide aquí, al abrir el formulario, y no al
+                // construir la pestaña: un `.task` en una vista dentro de un
+                // `TabView` se ejecuta cuando SwiftUI crea la pestaña, que puede
+                // ser antes de que el usuario la vea siquiera. Se pedía sin que
+                // nadie hubiera ido a Alarmas, y el diálogo aparecía encima de
+                // otras pantallas.
+                //
+                // Tocar «+» sí es intención inequívoca, y es antes de que el
+                // usuario haya invertido tiempo rellenando nada.
+                if store.authorization == .notDetermined {
+                    await store.requestAuthorization()
+                }
+            }
             .confirmationDialog(
                 "¿Eliminar esta alarma?",
                 isPresented: $showingDeleteConfirmation,

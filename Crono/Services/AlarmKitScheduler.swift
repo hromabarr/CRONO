@@ -15,14 +15,13 @@ struct CronoAlarmMetadata: AlarmMetadata {
 
 /// La única pieza de la app que toca AlarmKit.
 ///
-/// > Importante: las firmas de `AlarmManager.schedule` y de los tipos de
-/// > presentación son una reconstrucción, no están verificadas. La documentación
-/// > que tengo a mano trae ejemplos con errores de sintaxis, así que si algo de
-/// > este archivo no compila, el mensaje del compilador es más fiable que estos
-/// > comentarios: la forma correcta está en la definición del framework.
-/// >
-/// > Todo lo demás —modelo, almacén, interfaz— va detrás de `AlarmScheduling` y
-/// > no depende de que esto sea exacto.
+/// Compila y funciona contra el SDK de iOS 26.5: el diálogo de permiso del
+/// sistema aparece y `NSAlarmKitUsageDescription` se muestra en él. Lo que sigue
+/// **sin** verificar es que una alarma programada suene de verdad a su hora —
+/// eso solo lo dice un dispositivo, no un simulador de CI.
+///
+/// Sigue detrás de `AlarmScheduling` por si cambia la API: el modelo, el almacén
+/// y la interfaz no dependen de este archivo.
 @MainActor
 final class AlarmKitScheduler: AlarmScheduling {
 
@@ -90,7 +89,13 @@ final class AlarmKitScheduler: AlarmScheduling {
         case .authorized: .authorized
         case .denied: .denied
         case .notDetermined: .notDetermined
-        @unknown default: .unavailable
+        // Un caso que no conocemos se trata como «aún no decidido», no como
+        // «este aparato no puede». Mapearlo a `.unavailable` hacía que la
+        // pantalla avisara de que las alarmas no sonarían justo mientras el
+        // sistema estaba pidiendo el permiso — el aviso más alarmante posible,
+        // y falso. `.unavailable` queda reservado para cuando AlarmKit no se
+        // puede ni importar.
+        @unknown default: .notDetermined
         }
     }
 

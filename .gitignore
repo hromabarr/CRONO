@@ -6,6 +6,7 @@ Crono/Info.plist
 build/
 DerivedData/
 Payload/
+dist/
 *.ipa
 *.xcarchive
 
