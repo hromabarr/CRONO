@@ -73,7 +73,12 @@ struct SleepCycleCalculatorTests {
         #expect(text(options[2].bedtime) == "15 00:45")
 
         // Todas apuntan al mismo despertador.
-        #expect(options.allSatisfy { self.text($0.wakeTime) == "15 07:00" })
+        //
+        // El resultado se ata a una variable antes del `#expect`: `allSatisfy` es
+        // `rethrows`, y dentro de la expansión de la macro el compilador pierde
+        // la inferencia de que el cierre no lanza y exige un `try`.
+        let sameWakeTime = options.allSatisfy { text($0.wakeTime) == "15 07:00" }
+        #expect(sameWakeTime)
     }
 
     @Test("Se marca la opción cuya hora de acostarse ya pasó")
@@ -89,7 +94,8 @@ struct SleepCycleCalculatorTests {
     @Test("A primera hora de la tarde todavía se alcanzan todas")
     func earlyEveningKeepsEveryOption() {
         let options = calculator.options(forWakeMinuteOfDay: 7 * 60, now: date(20, 0))
-        #expect(options.allSatisfy { $0.isPast == false })
+        let noneMissed = options.allSatisfy { $0.isPast == false }
+        #expect(noneMissed)
     }
 
     @Test("De madrugada ya no se alcanza casi ninguna")
@@ -97,7 +103,8 @@ struct SleepCycleCalculatorTests {
         // A la 1:00, para despertar a las 7:00 solo quedan menos de 6 h: ninguna
         // de las tres opciones sigue en pie.
         let options = calculator.options(forWakeMinuteOfDay: 7 * 60, now: date(1, 0))
-        #expect(options.allSatisfy(\.isPast))
+        let allMissed = options.allSatisfy(\.isPast)
+        #expect(allMissed)
     }
 
     // MARK: - Duración
@@ -156,9 +163,13 @@ struct SleepCycleCalculatorTests {
         let standard = SleepCycleCalculator(calendar: calendar)
         let options = standard.options(forWakeMinuteOfDay: 7 * 60, now: date(18, 0))
 
+        let atLeastSevenHours = options.allSatisfy { $0.sleepMinutes >= 7 * 60 }
+        let cycles: [Int] = options.map { $0.cycles }
+        let expectedCycles: [Int] = [6, 5]
+
         #expect(options.count == 2)
-        #expect(options.allSatisfy { $0.sleepMinutes >= 7 * 60 })
-        #expect(options.map(\.cycles) == [6, 5])
+        #expect(atLeastSevenHours)
+        #expect(cycles == expectedCycles)
     }
 
     // MARK: - Parámetros
