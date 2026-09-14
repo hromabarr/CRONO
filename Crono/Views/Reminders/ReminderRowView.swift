@@ -133,9 +133,7 @@ struct ReminderRowView: View {
     private var dueDayKey: DayKey? { reminder.dueDayKey }
 
     static func timeText(_ minuteOfDay: Int) -> String {
-        let hours = minuteOfDay / 60
-        let minutes = minuteOfDay % 60
-        return String(format: "%d:%02d", hours, minutes)
+        ClockTime.text(minuteOfDay: minuteOfDay)
     }
 
     private var accessibilityLabel: String {

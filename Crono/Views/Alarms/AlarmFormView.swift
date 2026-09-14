@@ -25,6 +25,12 @@ struct AlarmFormView: View {
     @State private var snoozeEnabled: Bool
     @State private var showingDeleteConfirmation = false
 
+    /// Se captura al abrir el formulario, que es «el momento de añadir la
+    /// alarma». No se refresca mientras la pantalla sigue abierta: los
+    /// formularios son transitorios, y un reloj vivo aquí solo serviría para
+    /// recalcular la sección en cada latido.
+    private let now = Date.now
+
     init(mode: Mode) {
         self.mode = mode
 
@@ -53,6 +59,7 @@ struct AlarmFormView: View {
         NavigationStack {
             Form {
                 timeSection
+                sleepSection
                 repeatSection
                 optionsSection
                 if editingAlarm != nil { dangerSection }
@@ -85,6 +92,17 @@ struct AlarmFormView: View {
             .labelsHidden()
             .frame(maxWidth: .infinity)
         }
+    }
+
+    /// A qué hora acostarse para llegar a la alarma con ciclos completos.
+    ///
+    /// Va justo debajo del selector de hora porque depende de él: al girar la
+    /// rueda, las horas sugeridas se mueven con ella.
+    private var sleepSection: some View {
+        SleepCycleSection(
+            wakeMinuteOfDay: AlarmStore.minuteOfDay(of: time),
+            now: now
+        )
     }
 
     private var repeatSection: some View {

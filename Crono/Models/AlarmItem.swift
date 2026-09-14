@@ -80,12 +80,10 @@ extension AlarmItem {
 // MARK: - Presentación
 
 extension AlarmItem {
-    /// «7:30». Formato de 24 horas fijo.
-    ///
-    /// No usa `Date.FormatStyle`: eso daría «7:30 AM» en regiones de 12 horas, y
-    /// aquí el reloj se muestra a lo grande — el sufijo desequilibra la fila.
+    /// «7:30». El formato vive en `ClockTime`, compartido con las tareas y con
+    /// la sección de ciclos de sueño.
     var timeText: String {
-        String(format: "%d:%02d", hour, minute)
+        ClockTime.text(minuteOfDay: minuteOfDay)
     }
 
     /// Texto de repetición: «Todos los días», «Lun, Mié, Vie», «Una vez».
