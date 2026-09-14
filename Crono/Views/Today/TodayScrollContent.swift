@@ -1,25 +1,29 @@
 import SwiftUI
 
-/// Cuerpo desplazable de la pantalla Hoy: fecha, anillo y lista.
+/// Cuerpo desplazable de la pantalla Hoy.
+///
+/// El orden no es casual: primero el anillo con los hábitos, porque el anillo
+/// mide justo eso y separarlos de lo que cuentan lo haría ilegible; después las
+/// tareas, que son lo variable del día; y al final la alarma, que cierra.
 struct TodayScrollContent: View {
     let viewModel: TodayViewModel
-    let scheduled: [Habit]
-    let onToggle: (Habit) -> Void
-
-    private var progress: TodayViewModel.DayProgress {
-        viewModel.progress(for: scheduled)
-    }
+    let digest: TodayDigest
+    let onToggleHabit: (Habit) -> Void
+    let onToggleReminder: (Reminder) -> Void
+    let onOpenTab: (AppTab) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             dateHeader
-            summary
-            SectionLabel("Hábitos de hoy")
-            habitsCard
+            habitsBlock
+            tasksBlock
+            alarmBlock
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
     }
+
+    // MARK: - Bloques
 
     private var dateHeader: some View {
         Text(viewModel.todayTitle)
@@ -29,22 +33,66 @@ struct TodayScrollContent: View {
             .padding(.bottom, 12)
     }
 
+    @ViewBuilder
+    private var habitsBlock: some View {
+        if !digest.scheduledHabits.isEmpty {
+            summary
+            SectionLabel("Hábitos de hoy")
+            TodayHabitsCard(
+                viewModel: viewModel,
+                habits: digest.scheduledHabits,
+                onToggle: onToggleHabit
+            )
+        }
+    }
+
+    /// El anillo solo mide hábitos, y su texto lo dice.
+    ///
+    /// Mezclar tareas en el porcentaje lo volvería ruido: un día con veinte
+    /// tareas ahogaría los hábitos, y dejaría de casar con el Historial, que
+    /// cuenta días perfectos de hábitos.
     private var summary: TodayHeaderView {
-        // Tipo de retorno concreto en lugar de `some View`: no hay nada que
-        // resolver, y esta propiedad se evalúa en cada redibujado.
-        let current = progress
+        let progress = viewModel.progress(for: digest.scheduledHabits)
         return TodayHeaderView(
-            progress: current,
-            headline: viewModel.headline(for: current),
-            detail: viewModel.detail(for: current)
+            progress: progress,
+            headline: viewModel.headline(for: progress),
+            detail: viewModel.detail(for: progress)
         )
     }
 
-    private var habitsCard: TodayHabitsCard {
-        TodayHabitsCard(
-            viewModel: viewModel,
-            habits: scheduled,
-            onToggle: onToggle
-        )
+    @ViewBuilder
+    private var tasksBlock: some View {
+        if !digest.reminders.isEmpty {
+            SectionLabel("Tareas de hoy")
+
+            TodayTasksCard(
+                reminders: digest.visibleReminders,
+                today: digest.today,
+                nowMinuteOfDay: digest.nowMinuteOfDay,
+                onToggle: onToggleReminder
+            )
+
+            if digest.hiddenReminderCount > 0 {
+                Button {
+                    onOpenTab(.reminders)
+                } label: {
+                    Text("Ver las \(digest.hiddenReminderCount) restantes")
+                        .font(.footnote)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 9)
+                        .padding(.horizontal, 6)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var alarmBlock: some View {
+        if let alarm = digest.nextAlarm {
+            SectionLabel("Próxima alarma")
+            TodayNextAlarmCard(alarm: alarm, isRegistered: alarm.systemAlarmID != nil)
+        }
     }
 }

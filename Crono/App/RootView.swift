@@ -32,7 +32,7 @@ struct RootView: View {
             // Los nombres dicen qué hay dentro. "Inicio" no le diría al usuario
             // en qué pestaña está el calendario.
             Tab("Hoy", systemImage: "checkmark.circle", value: AppTab.today) {
-                TodayView(onCreateHabit: { selectedTab = .habits })
+                TodayView(onOpenTab: { selectedTab = $0 })
             }
 
             Tab("Tareas", systemImage: "list.bullet.rectangle", value: AppTab.reminders) {

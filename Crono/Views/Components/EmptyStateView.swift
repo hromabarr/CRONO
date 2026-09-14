@@ -79,15 +79,6 @@ extension EmptyStateView {
         )
     }
 
-    /// Hay hábitos, pero ninguno toca hoy.
-    static var nothingToday: EmptyStateView {
-        EmptyStateView(
-            title: "Hoy no toca nada",
-            message: "Ninguno de tus hábitos está programado para hoy. Disfruta del día libre.",
-            systemImage: "moon.zzz"
-        )
-    }
-
     /// Aún no hay historial que enseñar.
     static var noHistory: EmptyStateView {
         EmptyStateView(
@@ -100,8 +91,4 @@ extension EmptyStateView {
 
 #Preview("Sin hábitos") {
     EmptyStateView.noHabits {}
-}
-
-#Preview("Nada hoy") {
-    EmptyStateView.nothingToday
 }

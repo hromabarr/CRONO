@@ -198,31 +198,16 @@ final class AlarmStore {
         }
     }
 
-    /// La siguiente alarma que va a sonar, para enseñarla en la pantalla Hoy.
+    /// La siguiente alarma que va a sonar.
     ///
-    /// Recorre los siete próximos días en lugar de calcular con aritmética
-    /// modular: son 7 iteraciones y el código se lee sin tener que confiar en él.
+    /// La lógica vive en `AlarmItem.next(from:)`, que es pura: así la pantalla
+    /// Hoy puede alimentarla desde su `@Query` sin consultar la base en cada
+    /// redibujado, y se puede probar con una fecha fija.
     func nextAlarm(
         from now: Date = .now,
         calendar: Calendar = AppCalendar.current
     ) -> AlarmItem? {
-        let alarms = allAlarms().filter(\.isSchedulable)
-        guard !alarms.isEmpty else { return nil }
-
-        let nowMinute = Self.minuteOfDay(of: now, calendar: calendar)
-        let todayWeekday = calendar.component(.weekday, from: now)
-
-        for dayOffset in 0..<7 {
-            let weekday = (todayWeekday - 1 + dayOffset) % 7 + 1
-            let candidates = alarms
-                .filter { $0.schedule.contains(weekday: weekday) }
-                .filter { dayOffset > 0 || $0.minuteOfDay > nowMinute }
-                .sorted { $0.minuteOfDay < $1.minuteOfDay }
-
-            if let first = candidates.first { return first }
-        }
-
-        return nil
+        AlarmItem.next(from: allAlarms(), now: now, calendar: calendar)
     }
 
     static func minuteOfDay(of date: Date, calendar: Calendar = AppCalendar.current) -> Int {

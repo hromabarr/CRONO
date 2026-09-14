@@ -1,53 +1,43 @@
 import SwiftUI
 
-/// Elige entre los dos estados vacíos de la pantalla Hoy y el contenido normal.
-///
-/// Cada rama es una propiedad con nombre y tipo propio. Antes las ramas se
-/// construían con un ayudante genérico —`filling<Content: View>(_:) -> some
-/// View`— llamado con un cierre desde dentro del `ViewBuilder`: el compilador
-/// tenía que inferir `Content` desde el cierre y luego resolver el tipo opaco,
-/// todo ello dentro de una cadena de `_ConditionalContent`. Eso es justo lo que
-/// hacía que se rindiera con «unable to type-check this expression in reasonable
-/// time».
+/// Elige entre el día vacío y el contenido de la pantalla Hoy.
 struct TodayContent: View {
     let viewModel: TodayViewModel
-    let habits: [Habit]
-    let onToggle: (Habit) -> Void
-    let onCreateHabit: () -> Void
-
-    /// Fuera del `body`: una declaración local dentro de un `ViewBuilder` es una
-    /// de las cosas que más encarecen la inferencia de tipos.
-    private var scheduled: [Habit] {
-        viewModel.habitsScheduledToday(from: habits)
-    }
+    let digest: TodayDigest
+    let onToggleHabit: (Habit) -> Void
+    let onToggleReminder: (Reminder) -> Void
+    let onOpenTab: (AppTab) -> Void
 
     var body: some View {
-        if habits.isEmpty {
-            noHabitsState
-        } else if scheduled.isEmpty {
-            nothingTodayState
+        if digest.isEmpty {
+            emptyState
         } else {
-            scrollContent
+            ScrollView {
+                TodayScrollContent(
+                    viewModel: viewModel,
+                    digest: digest,
+                    onToggleHabit: onToggleHabit,
+                    onToggleReminder: onToggleReminder,
+                    onOpenTab: onOpenTab
+                )
+            }
         }
     }
 
-    private var noHabitsState: some View {
-        EmptyStateView.noHabits(onCreate: onCreateHabit)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var nothingTodayState: some View {
-        EmptyStateView.nothingToday
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var scrollContent: some View {
-        ScrollView {
-            TodayScrollContent(
-                viewModel: viewModel,
-                scheduled: scheduled,
-                onToggle: onToggle
-            )
-        }
+    /// Un único estado vacío para toda la pantalla.
+    ///
+    /// Antes había dos —«sin hábitos» y «hoy no toca nada»— porque la pantalla
+    /// solo hablaba de hábitos. Ahora que reúne tres cosas, distinguir cuál de
+    /// ellas falta sería contarle al usuario la arquitectura interna: lo que
+    /// importa es que no tiene nada pendiente.
+    private var emptyState: some View {
+        EmptyStateView(
+            title: "Nada pendiente",
+            message: "No tienes hábitos ni tareas para hoy. Puedes añadir algo desde Tareas o Hábitos.",
+            systemImage: "checkmark.circle",
+            actionTitle: "Ir a Tareas",
+            action: { onOpenTab(.reminders) }
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -107,6 +107,53 @@ extension AlarmItem {
     }
 }
 
+// MARK: - Próxima alarma
+
+extension AlarmItem {
+    /// La primera alarma de la lista que va a sonar a partir de `now`.
+    ///
+    /// Es función pura para poder alimentarla desde un `@Query` de la vista en
+    /// lugar de consultar la base en cada redibujado, y para poder probarla con
+    /// una fecha fija.
+    ///
+    /// Recorre los siete próximos días en lugar de resolverlo con aritmética
+    /// modular: son siete iteraciones y el código se lee sin tener que confiar
+    /// en él.
+    static func next(
+        from alarms: [AlarmItem],
+        now: Date = .now,
+        calendar: Calendar = AppCalendar.current
+    ) -> AlarmItem? {
+        var candidates: [AlarmItem] = []
+        for alarm in alarms where alarm.isSchedulable {
+            candidates.append(alarm)
+        }
+        guard !candidates.isEmpty else { return nil }
+
+        let parts = calendar.dateComponents([.hour, .minute], from: now)
+        let nowMinute = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
+        let todayWeekday = calendar.component(.weekday, from: now)
+
+        for dayOffset in 0..<7 {
+            let weekday = (todayWeekday - 1 + dayOffset) % 7 + 1
+
+            var onThatDay: [AlarmItem] = []
+            for alarm in candidates where alarm.schedule.contains(weekday: weekday) {
+                // Hoy solo cuentan las que aún no han sonado.
+                if dayOffset > 0 || alarm.minuteOfDay > nowMinute {
+                    onThatDay.append(alarm)
+                }
+            }
+
+            if let earliest = onThatDay.min(by: { $0.minuteOfDay < $1.minuteOfDay }) {
+                return earliest
+            }
+        }
+
+        return nil
+    }
+}
+
 // MARK: - Consultas
 
 enum AlarmQueries {
