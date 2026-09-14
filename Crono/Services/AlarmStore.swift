@@ -112,9 +112,20 @@ final class AlarmStore {
     /// de una alarma ya registrada no se puede hacer en sitio, y dejar la vieja
     /// puesta significaría dos alarmas sonando.
     private func syncWithSystem(_ item: AlarmItem) async {
+        refreshAuthorization()
+
         await unschedule(item)
 
         guard item.isSchedulable else { return }
+
+        // Sin permiso concedido no se intenta registrar. No es solo para evitar
+        // un error: en AlarmKit el propio intento de programar hace aparecer el
+        // diálogo del sistema, así que sin esta guarda cualquier escritura pide
+        // el permiso por la puerta de atrás — incluida la resincronización del
+        // arranque, que lo sacaba nada más abrir la app.
+        //
+        // La alarma queda guardada y sin registrar, y la interfaz lo dice.
+        guard authorization == .authorized else { return }
 
         do {
             let id = try await scheduler.schedule(item)
@@ -153,9 +164,24 @@ final class AlarmStore {
     /// reinstalar la app, y una alarma que el usuario ve activada tiene que
     /// sonar.
     func resyncAll() async {
+        refreshAuthorization()
+        // Si el permiso no está concedido no hay nada que resincronizar, y
+        // entrar en `syncWithSystem` provocaría el diálogo del sistema al
+        // arrancar la app.
+        guard authorization == .authorized else { return }
+
         for item in allAlarms() where item.isSchedulable && item.systemAlarmID == nil {
             await syncWithSystem(item)
         }
+    }
+
+    /// Relee el permiso del planificador.
+    ///
+    /// El estado lo mantiene el sistema y puede cambiar fuera de la app —el
+    /// usuario lo concede o lo revoca en Ajustes—, así que la copia local se
+    /// refresca antes de decidir si merece la pena intentar registrar algo.
+    private func refreshAuthorization() {
+        authorization = scheduler.authorization
     }
 
     // MARK: - Consultas
