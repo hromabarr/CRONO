@@ -59,7 +59,7 @@ struct SleepCycleSection: View {
                 Spacer(minLength: 8)
                 Text(ClockTime.duration(minutes: minutes))
                     .monospacedDigit()
-                    .foregroundStyle(minutes < Self.recommendedMinimumMinutes ? .orange : .secondary)
+                    .foregroundStyle(minutes < Self.recommendedMinimumMinutes ? Color.orange : Color.secondary)
             }
             .font(.footnote)
             .accessibilityElement(children: .combine)

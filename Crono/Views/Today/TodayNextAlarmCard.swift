@@ -23,7 +23,7 @@ struct TodayNextAlarmCard: View {
 
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(isRegistered ? .secondary : .orange)
+                    .foregroundStyle(isRegistered ? Color.secondary : Color.orange)
             }
 
             Spacer(minLength: 0)
