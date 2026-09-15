@@ -69,6 +69,25 @@ struct WeekdaySet: OptionSet, Codable, Sendable, Hashable {
             : union(WeekdaySet(weekday: weekday))
     }
 
+    /// El mismo conjunto corrido un día hacia adelante: lunes pasa a martes,
+    /// sábado a domingo.
+    ///
+    /// Hace falta para las réplicas de una alarma que cruzan la medianoche. Una
+    /// alarma de días laborables a las 23:58 con una réplica a los tres minutos
+    /// suena a las 00:01, y ese 00:01 **no** es de lunes a viernes: es de martes
+    /// a sábado. Programar la réplica con el mismo conjunto la adelantaría 24
+    /// horas justas.
+    ///
+    /// El conjunto vacío se queda vacío, que es lo correcto: una alarma sin días
+    /// no se registra, y su réplica tampoco debe.
+    func shiftedByOneDay() -> WeekdaySet {
+        // El domingo es el bit 0 y el sábado el 6, así que avanzar un día es
+        // desplazar a la izquierda, con el sábado dando la vuelta al domingo.
+        let advanced = (rawValue << 1) & Self.validBits
+        let saturdayWrapsToSunday = contains(weekday: 7) ? 1 : 0
+        return WeekdaySet(rawValue: advanced | saturdayWrapsToSunday)
+    }
+
     // MARK: - Consulta
 
     var isEveryDay: Bool { self == .everyDay }
