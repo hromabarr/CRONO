@@ -23,8 +23,7 @@ enum PreviewData {
         let container: ModelContainer
         do {
             container = try ModelContainer(
-                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
-                configurations: configuration
+                for: Schema.crono, configurations: configuration
             )
         } catch {
             fatalError("No se pudo crear el contenedor de previsualización: \(error)")
@@ -39,8 +38,7 @@ enum PreviewData {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         do {
             return try ModelContainer(
-                for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
-                configurations: configuration
+                for: Schema.crono, configurations: configuration
             )
         } catch {
             fatalError("No se pudo crear el contenedor de previsualización: \(error)")

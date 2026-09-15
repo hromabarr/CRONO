@@ -12,18 +12,17 @@ struct CronoApp: App {
     private let storageWarning: String?
 
     init() {
-        let schema = Schema([
-            Habit.self, HabitCompletion.self,
-            ReminderList.self, Reminder.self,
-            AlarmItem.self
-        ])
+        // La lista de modelos vive en `CronoSchemaV1`, y el plan de migración
+        // viaja con ella: sin él, el primer cambio de forma de los datos
+        // invalidaría el almacén del usuario en lugar de migrarlo.
+        let schema = Schema.crono
         var warning: String?
         let resolved: ModelContainer
 
         Self.ensureApplicationSupportExists()
 
         do {
-            resolved = try ModelContainer(for: schema)
+            resolved = try ModelContainer(for: schema, migrationPlan: CronoMigrationPlan.self)
         } catch {
             // Si el almacén en disco falla —base corrupta, sin espacio— la app
             // arranca en memoria en lugar de cerrarse de golpe. Se pierde la
@@ -36,6 +35,7 @@ struct CronoApp: App {
             do {
                 resolved = try ModelContainer(
                     for: schema,
+                    migrationPlan: CronoMigrationPlan.self,
                     configurations: ModelConfiguration(isStoredInMemoryOnly: true)
                 )
             } catch {

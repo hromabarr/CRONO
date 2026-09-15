@@ -23,8 +23,7 @@ struct HabitStoreTests {
     func makeStore() throws -> (store: HabitStore, context: ModelContext) {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
-            configurations: configuration
+            for: Schema.crono, configurations: configuration
         )
         let context = ModelContext(container)
         return (HabitStore(context: context, calendar: calendar), context)

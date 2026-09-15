@@ -49,10 +49,7 @@ struct RootView: View {
         }
         .alert(
             "Algo ha fallado",
-            isPresented: Binding(
-                get: { failure != nil },
-                set: { if !$0 { clearFailure() } }
-            ),
+            isPresented: isShowingFailure,
             presenting: failure
         ) { _ in
             Button("Entendido", role: .cancel) { clearFailure() }
@@ -72,6 +69,21 @@ struct RootView: View {
     /// además, al usuario le da igual cuál de los tres subsistemas falló.
     private var failure: StoreFailure? {
         store.failure ?? reminderStore.failure ?? alarmStore.failure
+    }
+
+    /// El enlace que presenta la alerta.
+    ///
+    /// SwiftUI no tiene un `alert(_:item:)` moderno —el de `item:` se quedó en
+    /// iOS 15 y devuelve el `Alert` antiguo—, así que el estado hay que
+    /// derivarlo. Sale del cuerpo de la vista a propósito: construir un
+    /// `Binding` con dos cierres dentro de una cadena de modificadores es
+    /// justo lo que dispara los «unable to type-check this expression in
+    /// reasonable time» de este proyecto.
+    private var isShowingFailure: Binding<Bool> {
+        Binding(
+            get: { failure != nil },
+            set: { if !$0 { clearFailure() } }
+        )
     }
 
     private func clearFailure() {

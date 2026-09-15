@@ -20,8 +20,7 @@ struct ReminderRecurrenceTests {
     func makeStore() throws -> (store: ReminderStore, context: ModelContext) {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
-            for: Habit.self, HabitCompletion.self, ReminderList.self, Reminder.self, AlarmItem.self,
-            configurations: configuration
+            for: Schema.crono, configurations: configuration
         )
         let context = ModelContext(container)
         return (ReminderStore(context: context, calendar: calendar), context)
