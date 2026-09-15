@@ -42,6 +42,16 @@ struct ReminderFormView: View {
             if viewModel == nil {
                 viewModel = ReminderFormViewModel(store: store, mode: viewModelMode)
             }
+
+            // Se pide aqui, al abrir el formulario, y no al construir la
+            // pestana: un `.task` dentro de un `TabView` corre cuando SwiftUI
+            // crea la vista, que puede ser antes de que el usuario la vea. Es
+            // la misma leccion que con las alarmas, donde el dialogo acababa
+            // saliendo encima de otra pantalla.
+            await store.refreshNotificationAuthorization()
+            if store.notificationAuthorization == .notDetermined {
+                await store.requestNotificationAuthorization()
+            }
         }
     }
 

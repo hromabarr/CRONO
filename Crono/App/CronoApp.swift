@@ -48,7 +48,17 @@ struct CronoApp: App {
         self.container = resolved
         self.storageWarning = warning
         _store = State(initialValue: HabitStore(context: resolved.mainContext))
-        _reminderStore = State(initialValue: ReminderStore(context: resolved.mainContext))
+        // Mismo patron que las alarmas: el notificador real solo si el
+        // framework existe; si no, la app funciona igual y las tareas
+        // simplemente no avisan.
+        #if canImport(UserNotifications)
+        let notifier: any ReminderNotifying = UserNotificationNotifier()
+        #else
+        let notifier: any ReminderNotifying = NoopReminderNotifier(authorization: .unavailable)
+        #endif
+        _reminderStore = State(
+            initialValue: ReminderStore(context: resolved.mainContext, notifier: notifier)
+        )
 
         // El planificador real solo existe si AlarmKit está disponible; si no, la
         // app guarda y lista alarmas igual, y la interfaz avisa de que no van a

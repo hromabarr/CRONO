@@ -57,3 +57,71 @@ enum RecurrenceRule: Equatable, Hashable, Sendable {
         }
     }
 }
+
+// MARK: - Siguiente vencimiento
+
+extension RecurrenceRule {
+    /// El siguiente día en que toca, a partir de uno dado.
+    ///
+    /// Devuelve `nil` si la regla no puede producir otro día — una regla semanal
+    /// sin días marcados, o una clave de fecha corrupta.
+    ///
+    /// Los saltos de mes y año se delegan a `Calendar`, que además **recorta**:
+    /// una tarea mensual del día 31 cae en el 28 o 29 en febrero en lugar de
+    /// saltarse el mes. Saltárselo sería peor — una tarea mensual que no aparece
+    /// en febrero deja de ser mensual.
+    func nextDueDayKey(
+        after dayKey: DayKey,
+        calendar: Calendar = AppCalendar.current
+    ) -> DayKey? {
+        switch self {
+        case .daily:
+            return calendar.dayKey(dayKey, offsetByDays: 1)
+
+        case let .weekly(days):
+            return Self.nextWeekly(after: dayKey, days: days, calendar: calendar)
+
+        case .monthly:
+            return Self.shifting(dayKey, by: .month, calendar: calendar)
+
+        case .yearly:
+            return Self.shifting(dayKey, by: .year, calendar: calendar)
+        }
+    }
+
+    /// El siguiente día de la semana marcado, mirando como mucho una semana.
+    ///
+    /// Se avanza día a día en lugar de calcular la diferencia con aritmética
+    /// modular: son siete iteraciones como máximo y el código se lee sin tener
+    /// que confiar en él.
+    private static func nextWeekly(
+        after dayKey: DayKey,
+        days: WeekdaySet,
+        calendar: Calendar
+    ) -> DayKey? {
+        guard !days.isEmpty else { return nil }
+
+        var cursor = dayKey
+        for _ in 1...7 {
+            guard let next = calendar.dayKey(cursor, offsetByDays: 1),
+                  let weekday = calendar.weekday(fromDayKey: next)
+            else { return nil }
+
+            cursor = next
+            if days.contains(weekday: weekday) { return cursor }
+        }
+        return nil
+    }
+
+    private static func shifting(
+        _ dayKey: DayKey,
+        by component: Calendar.Component,
+        calendar: Calendar
+    ) -> DayKey? {
+        guard let date = calendar.date(fromDayKey: dayKey),
+              let shifted = calendar.date(byAdding: component, value: 1, to: date)
+        else { return nil }
+
+        return calendar.dayKey(from: shifted)
+    }
+}

@@ -11,11 +11,35 @@ import SwiftData
 @Observable
 final class ReminderStore {
     private let context: ModelContext
+    private let notifier: any ReminderNotifying
+    private let calendar: Calendar
 
     var failure: StoreFailure?
 
-    init(context: ModelContext) {
+    /// Último estado conocido del permiso de notificaciones.
+    private(set) var notificationAuthorization: AlarmAuthorization = .notDetermined
+
+    init(
+        context: ModelContext,
+        notifier: any ReminderNotifying = NoopReminderNotifier(),
+        calendar: Calendar = AppCalendar.current
+    ) {
         self.context = context
+        self.notifier = notifier
+        self.calendar = calendar
+    }
+
+    // MARK: - Permiso de avisos
+
+    @discardableResult
+    func requestNotificationAuthorization() async -> AlarmAuthorization {
+        let state = await notifier.requestAuthorization()
+        notificationAuthorization = state
+        return state
+    }
+
+    func refreshNotificationAuthorization() async {
+        notificationAuthorization = await notifier.authorization
     }
 
     // MARK: - Listas
@@ -115,6 +139,8 @@ final class ReminderStore {
             context.rollback()
             return nil
         }
+
+        Task { await syncNotification(for: reminder) }
         return reminder
     }
 
@@ -138,12 +164,31 @@ final class ReminderStore {
         reminder.recurrence = recurrence
         if let list { reminder.list = list }
 
-        if !save(action: "guardar la tarea") { context.rollback() }
+        guard save(action: "guardar la tarea") else {
+            context.rollback()
+            return
+        }
+
+        Task { await syncNotification(for: reminder) }
     }
 
     func delete(_ reminder: Reminder) {
+        // Los identificadores se anotan antes de borrar: después ya no habría de
+        // dónde leerlos, y quedaría un aviso programado por algo que el usuario
+        // cree eliminado.
+        var ids = [reminder.uuid]
+        for subtask in reminder.subtasks {
+            ids.append(subtask.uuid)
+        }
+
         context.delete(reminder)
         if !save(action: "eliminar la tarea") { context.rollback() }
+
+        Task {
+            for id in ids {
+                await notifier.cancel(reminderID: id)
+            }
+        }
     }
 
     func moveReminders(_ reminders: [Reminder], from source: IndexSet, to destination: Int) {
@@ -176,15 +221,130 @@ final class ReminderStore {
             }
         }
 
-        if !save(action: "guardar la tarea") { context.rollback() }
+        let successor = completing ? makeNextOccurrence(of: reminder) : nil
+
+        guard save(action: "guardar la tarea") else {
+            context.rollback()
+            return
+        }
+
+        Task {
+            // Una tarea completada no tiene que avisar de nada.
+            if completing {
+                await notifier.cancel(reminderID: reminder.uuid)
+            } else {
+                await syncNotification(for: reminder)
+            }
+            if let successor {
+                await syncNotification(for: successor)
+            }
+        }
+    }
+
+    // MARK: - Repetición
+
+    /// Crea la siguiente aparición de una tarea recurrente al completarla.
+    ///
+    /// La completada se queda completada y nace una nueva con el vencimiento
+    /// siguiente. Es lo que hace Recordatorios, y preserva el historial: mover la
+    /// fecha de la misma tarea borraría cualquier rastro de que se cumplió.
+    ///
+    /// Devuelve `nil` si la tarea no se repite, si no tiene fecha —una repetición
+    /// sin vencimiento no tiene desde dónde contar— o si es una subtarea: quien
+    /// se repite es la madre, y duplicar las hijas por su cuenta las dejaría
+    /// huérfanas.
+    @discardableResult
+    private func makeNextOccurrence(of reminder: Reminder) -> Reminder? {
+        guard reminder.parent == nil,
+              let rule = reminder.recurrence,
+              let dueDayKey = reminder.dueDayKey,
+              let list = reminder.list,
+              let nextDayKey = rule.nextDueDayKey(after: dueDayKey, calendar: calendar)
+        else { return nil }
+
+        let next = Reminder(
+            title: reminder.title,
+            notes: reminder.notes,
+            sortIndex: reminder.sortIndex,
+            dueDayKey: nextDayKey,
+            dueMinuteOfDay: reminder.dueMinuteOfDay,
+            priority: reminder.priority,
+            isFlagged: reminder.isFlagged,
+            recurrence: rule
+        )
+        context.insert(next)
+        next.list = list
+
+        // Las subtareas se copian sin marcar: una lista de comprobación semanal
+        // que reapareciera ya completada no serviría de nada.
+        let steps = reminder.subtasks.sorted { $0.sortIndex < $1.sortIndex }
+        for subtask in steps {
+            let copy = Reminder(
+                title: subtask.title,
+                notes: subtask.notes,
+                sortIndex: subtask.sortIndex
+            )
+            context.insert(copy)
+            copy.list = list
+            copy.parent = next
+        }
+
+        return next
+    }
+
+    // MARK: - Avisos
+
+    /// Deja el aviso del sistema acorde con la tarea.
+    ///
+    /// Solo avisan las tareas con **hora**: sin ella no hay momento al que
+    /// avisar, y disparar a medianoche sería inventarse uno.
+    private func syncNotification(for reminder: Reminder) async {
+        await notifier.cancel(reminderID: reminder.uuid)
+
+        guard let request = notificationRequest(for: reminder) else { return }
+
+        await refreshNotificationAuthorization()
+        guard notificationAuthorization == .authorized else { return }
+
+        await notifier.schedule(request)
+    }
+
+    /// Qué aviso le corresponde a una tarea, o `nil` si no le corresponde
+    /// ninguno.
+    ///
+    /// La decisión está separada del envío porque el envío ocurre en un `Task`
+    /// suelto —las notificaciones son de mejor esfuerzo y no deben bloquear una
+    /// escritura— y eso no se puede probar sin depender del reloj. Esto sí.
+    func notificationRequest(for reminder: Reminder) -> ReminderNotificationRequest? {
+        // Solo avisan las tareas con **hora**: sin ella no hay momento al que
+        // avisar, y disparar a medianoche sería inventarse uno.
+        guard !reminder.isCompleted,
+              reminder.hasDueTime,
+              let fireDate = reminder.dueDate(calendar: calendar)
+        else { return nil }
+
+        return ReminderNotificationRequest(
+            reminderID: reminder.uuid,
+            title: reminder.title,
+            body: reminder.list?.name ?? "",
+            fireDate: fireDate
+        )
     }
 
     /// Borra de golpe las tareas completadas de una lista.
     func clearCompleted(in list: ReminderList) {
+        var ids: [UUID] = []
         for reminder in list.reminders where reminder.isCompleted {
+            ids.append(reminder.uuid)
             context.delete(reminder)
         }
         if !save(action: "borrar las tareas completadas") { context.rollback() }
+
+        Task {
+            for id in ids {
+                await notifier.cancel(reminderID: id)
+            }
+        }
     }
 
     // MARK: - Consultas
