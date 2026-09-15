@@ -79,11 +79,16 @@ struct SchemaVersionTests {
         // modelos deja de estar registrado.
         let store = HabitStore(context: context)
         let habit = try #require(store.createHabit(name: "Estirar", schedule: .everyDay))
-        store.toggleCompletion(for: habit, on: 20_260_914, today: 20_260_914)
+
+        // El día sale del propio hábito, no de una fecha escrita a mano: marcar
+        // antes de haberlo creado está prohibido, así que una fecha fija deja
+        // de valer en cuanto el reloj del CI la pasa.
+        let day = habit.createdDayKey
+        store.toggleCompletion(for: habit, on: day, today: day)
 
         let reminders = ReminderStore(context: context)
         let list = try #require(reminders.ensureDefaultList())
-        reminders.createReminder(title: "Comprar pan", in: list, dueDayKey: 20_260_914)
+        reminders.createReminder(title: "Comprar pan", in: list, dueDayKey: day)
 
         let alarms = AlarmStore(context: context, scheduler: NoopAlarmScheduler())
         _ = await alarms.create(minuteOfDay: 7 * 60, label: "Despertar", schedule: .weekdays)
