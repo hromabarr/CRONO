@@ -1,4 +1,4 @@
-<title>Hábitos — maqueta de interfaz</title>
+<title>Crono — maqueta de interfaz</title>
 
 <style>
   /* ============================================================
@@ -1047,16 +1047,329 @@
     .swatch:active,
     .nav-action:active { transform: none; }
   }
+
+  /* ============================================================
+     ACENTO DE CRONO
+     Los valores de arriba son el azul del sistema y quedan como
+     referencia. Estos son los de la app, leídos de
+     Assets.xcassets/AccentColor.colorset: son los que se ven en las
+     capturas de CI.
+     ============================================================ */
+  :root { --accent: #344c5c; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --accent: #49677a; }
+  }
+  :root[data-theme="dark"] { --accent: #49677a; }
+
+  /* Propuesta: misma familia de pizarra, otra luminancia. Los números
+     están en el pie de la página. */
+  :root[data-accent="propuesto"] { --accent: #2f6f8f; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"])[data-accent="propuesto"] { --accent: #5fb0d4; }
+  }
+  :root[data-theme="dark"][data-accent="propuesto"] { --accent: #5fb0d4; }
+
+  /* ============================================================
+     CROMO NUEVO: título grande y botones flotantes
+     ============================================================ */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0 2px;
+    min-height: 40px;
+  }
+
+  .chip {
+    appearance: none;
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--t-body);
+    letter-spacing: -0.014em;
+    color: var(--label);
+    background: var(--bg-card);
+    border-radius: 999px;
+    padding: 8px 18px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+    transition: transform var(--spring-fast);
+  }
+
+  .chip:active { transform: scale(0.94); }
+  .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .chip svg { width: 20px; height: 20px; }
+
+  .chip.circle {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .large-title {
+    font-size: var(--t-large-title);
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    line-height: 1.08;
+    padding: 6px 0 0;
+  }
+
+  .large-title .date {
+    display: block;
+    margin-top: 6px;
+    font-size: var(--t-body);
+    font-weight: 400;
+    letter-spacing: -0.014em;
+    color: var(--label-2);
+  }
+
+  /* La pestaña activa lleva una pastilla detrás, como en las capturas:
+     con el acento actual, el color por sí solo no la señala. */
+  .tabbar { padding: 9px 10px 26px; }
+
+  .tabbar button {
+    border-radius: 18px;
+    padding: 6px 0 5px;
+    transition: color var(--spring-fast), background var(--spring-fast);
+  }
+
+  .tabbar button[aria-selected="true"] { background: var(--bg-fill); }
+
+  /* ============================================================
+     TAREAS
+     ============================================================ */
+  .list-icon {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--tint);
+    display: grid;
+    place-items: center;
+    color: #fff;
+  }
+
+  .list-icon svg { width: 17px; height: 17px; }
+
+  .count {
+    flex: 0 0 auto;
+    color: var(--label-2);
+    font-size: var(--t-body);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* La prioridad va delante del título, como en Recordatorios: se lee
+     en la misma línea en vez de pedir una segunda mirada. */
+  .prio {
+    color: var(--tint, var(--accent));
+    font-weight: 600;
+    margin-right: 4px;
+  }
+
+  .flag { flex: 0 0 auto; color: var(--h-orange); }
+  .flag svg { width: 17px; height: 17px; display: block; }
+
+  /* Vencida: lo dice el rojo, pero siempre acompañado del texto de la
+     fecha. El color solo nunca lleva la información. */
+  .row-sub.is-overdue { color: var(--h-red); }
+
+  .row.is-done .row-title { color: var(--label-2); }
+
+  .more-row {
+    padding: 11px 16px;
+    font-size: var(--t-subhead);
+    color: var(--accent);
+    position: relative;
+  }
+
+  /* ============================================================
+     ALARMAS
+     ============================================================ */
+  .alarm-row { padding: 14px 16px; align-items: center; }
+
+  .alarm-time {
+    font-size: 38px;
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .alarm-row .row-sub { margin-top: 6px; }
+  .alarm-row.is-off .alarm-time,
+  .alarm-row.is-off .row-sub { color: var(--label-3); }
+
+  .ios-switch {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    flex: 0 0 auto;
+    width: 51px;
+    height: 31px;
+    border-radius: 999px;
+    background: var(--bg-fill-strong);
+    position: relative;
+    transition: background var(--spring-fast);
+  }
+
+  .ios-switch::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+    transition: transform var(--spring-fast);
+  }
+
+  .ios-switch[aria-checked="true"] { background: var(--h-green); }
+  .ios-switch[aria-checked="true"]::after { transform: translateX(20px); }
+  .ios-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ============================================================
+     CICLOS DE SUEÑO
+     ============================================================ */
+  .form-head {
+    font-size: var(--t-footnote);
+    color: var(--label-2);
+    padding: 22px 4px 8px;
+    letter-spacing: -0.005em;
+  }
+
+  .sleep-row { padding: 11px 16px; align-items: center; gap: 12px; }
+
+  .sleep-time {
+    font-size: var(--t-title2);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sleep-meta { margin-left: auto; text-align: right; }
+
+  .sleep-meta b {
+    display: block;
+    font-size: var(--t-subhead);
+    font-weight: 400;
+    color: var(--label-2);
+  }
+
+  .sleep-meta span {
+    display: block;
+    margin-top: 1px;
+    font-size: var(--t-caption2);
+    color: var(--label-3);
+  }
+
+  /* Las horas que ya pasaron se atenúan pero no se ocultan: saber que
+     se te escapó la de nueve horas es información, y quitarlas dejaría
+     la sección medio vacía sin explicar por qué. */
+  .sleep-row.is-past { opacity: 0.45; }
+
+  .now-row {
+    padding: 11px 16px;
+    font-size: var(--t-footnote);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  .now-row span { color: var(--label-2); }
+  .now-row b {
+    margin-left: auto;
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    color: var(--label-2);
+  }
+  .now-row b.is-short { color: var(--h-orange); }
+
+  /* Reloj para trastear con la hora de la alarma sin salir de la
+     maqueta: el cálculo de abajo es el mismo que el de Swift. */
+  .wake-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .wake-picker label { color: var(--label-2); font-size: var(--t-subhead); }
+
+  .wake-picker input {
+    margin-left: auto;
+    font: inherit;
+    font-size: var(--t-body);
+    font-variant-numeric: tabular-nums;
+    color: var(--label);
+    background: var(--bg-fill);
+    border: 0;
+    border-radius: 8px;
+    padding: 5px 9px;
+  }
+
+  .wake-picker input:focus-visible { outline: 2px solid var(--accent); }
+
+  /* ============================================================
+     PRÓXIMA ALARMA (tarjeta de Hoy)
+     ============================================================ */
+  .next-alarm { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+  .next-alarm .glyph { color: var(--accent); flex: 0 0 auto; }
+  .next-alarm .glyph svg { width: 26px; height: 26px; display: block; }
+  .next-alarm .when { margin-left: auto; text-align: right; }
+  .next-alarm .when b {
+    font-size: var(--t-title3);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .next-alarm .when span {
+    display: block;
+    font-size: var(--t-caption2);
+    color: var(--label-2);
+    margin-top: 1px;
+  }
+
+  /* ============================================================
+     CONMUTADOR DE ACENTO (fuera del teléfono)
+     ============================================================ */
+  .accent-switch { margin-top: 10px; }
+  .accent-switch .dot-preview {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 6px;
+    vertical-align: -1px;
+  }
 </style>
 
 <header class="page-head">
   <div>
-    <h1>Hábitos — maqueta de interfaz</h1>
+    <h1>Crono — maqueta de interfaz</h1>
     <p>
-      Réplica en HTML de las cuatro pantallas de la app iOS. Los toggles, el
-      anillo, el selector de color y el de días funcionan. No es SwiftUI
-      ejecutándose: sirve para juzgar diseño, jerarquía y flujo.
+      Réplica en HTML de las seis pantallas de la app iOS: hábitos, tareas y
+      alarmas en un mismo sitio. Funcionan los toggles, el anillo, el calendario
+      y la calculadora de ciclos de sueño —que ejecuta la misma aritmética que
+      el Swift—. No es SwiftUI corriendo: sirve para juzgar diseño, jerarquía y
+      flujo, no para saber si compila.
     </p>
+    <div class="theme-switch accent-switch" role="group" aria-label="Color de acento">
+      <button type="button" data-set-accent="actual" aria-pressed="true">
+        <span class="dot-preview" aria-hidden="true"></span>Acento actual
+      </button>
+      <button type="button" data-set-accent="propuesto" aria-pressed="false">
+        Propuesta
+      </button>
+    </div>
   </div>
   <div class="theme-switch" role="group" aria-label="Apariencia">
     <button type="button" data-set-theme="light" aria-pressed="false">Claro</button>
@@ -1072,7 +1385,7 @@
     <div class="bezel">
       <div class="screen">
         <div class="statusbar">
-          <span>9:41</span>
+          <span>7:12</span>
           <span class="glyphs">
             <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             <span class="battery" aria-hidden="true"><span></span></span>
@@ -1080,12 +1393,19 @@
         </div>
 
         <div class="scroll">
-          <div class="navbar">
-            <h2>
-              Hoy
-              <span class="subtitle">lunes, 27 de julio</span>
-            </h2>
+          <div class="topbar">
+            <button class="chip circle" type="button" aria-label="Ajustes">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3.2" />
+                <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z" />
+              </svg>
+            </button>
           </div>
+
+          <h2 class="large-title">
+            Hoy
+            <span class="date">lunes, 14 de septiembre</span>
+          </h2>
 
           <div class="ring-card">
             <div class="ring">
@@ -1114,44 +1434,192 @@
           <div class="section-label">Hábitos de hoy</div>
           <div class="card inset-separators" id="today-list"></div>
 
+          <div class="section-label">Tareas de hoy</div>
+          <div class="card inset-separators" id="today-tasks"></div>
+
+          <div class="section-label">Alarmas</div>
+          <div class="card">
+            <div class="next-alarm">
+              <span class="glyph" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="13" r="8" /><path d="M12 9.5V13l2.2 1.6M5 3 2.5 5.3M19 3l2.5 2.3" />
+                </svg>
+              </span>
+              <div class="row-text">
+                <div class="row-title">Despertar</div>
+                <div class="row-sub">Días laborables</div>
+              </div>
+              <div class="when"><b>7:00</b><span>mañana</span></div>
+            </div>
+          </div>
+
           <p class="footnote">
-            «Correr» y «Estudiar inglés» aparecen hoy porque el lunes está en su
-            programación. Un hábito de fin de semana no se mostraría.
+            Una sola pantalla para las tres cosas. El orden no es decorativo:
+            primero lo que se marca hoy, después lo que vence hoy, y al final lo
+            que va a sonar. Las tareas se cortan en cuatro para que la pantalla
+            siga leyéndose de un vistazo.
           </p>
         </div>
 
-        <nav class="tabbar" aria-label="Secciones">
-          <button type="button" aria-selected="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.6-5" />
-            </svg>
-            Hoy
-          </button>
-          <button type="button" aria-selected="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
-            </svg>
-            Historial
-          </button>
-          <button type="button" aria-selected="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />
-            </svg>
-            Hábitos
-          </button>
-        </nav>
+        <nav class="tabbar" data-tab="hoy" aria-label="Secciones"></nav>
         <div class="home-indicator" aria-hidden="true"></div>
       </div>
     </div>
   </figure>
 
-  <!-- ════════════════════════ HISTORIAL ════════════════════════ -->
+  <!-- ══════════════════════════ TAREAS ══════════════════════════ -->
   <figure class="device">
-    <figcaption>2 · Historial</figcaption>
+    <figcaption>2 · Tareas</figcaption>
     <div class="bezel">
       <div class="screen">
         <div class="statusbar">
-          <span>9:41</span>
+          <span>7:12</span>
+          <span class="glyphs">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="battery" aria-hidden="true"><span></span></span>
+          </span>
+        </div>
+
+        <div class="scroll">
+          <div class="topbar">
+            <button class="chip" type="button">Editar</button>
+            <button class="chip circle" type="button" aria-label="Nueva lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+
+          <h2 class="large-title">Tareas</h2>
+
+          <div class="card inset-separators" style="margin-top: 14px">
+            <div class="row">
+              <span class="list-icon" style="--tint: var(--h-blue)" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
+                </svg>
+              </span>
+              <div class="row-text"><div class="row-title">Hoy</div></div>
+              <span class="count">4</span>
+              <span class="chevron" aria-hidden="true">›</span>
+            </div>
+            <div class="row">
+              <span class="list-icon" style="--tint: var(--h-orange)" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M5 3v18h1.6v-7.2h5.1l.5 1.6h6.3V5.3h-5.2L12.8 3H5Z" />
+                </svg>
+              </span>
+              <div class="row-text"><div class="row-title">Con bandera</div></div>
+              <span class="count">2</span>
+              <span class="chevron" aria-hidden="true">›</span>
+            </div>
+          </div>
+
+          <div class="section-label">Mis listas</div>
+          <div class="card inset-separators">
+            <div class="row">
+              <span class="list-icon" style="--tint: var(--h-blue)" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="8.5" r="3.4" /><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0" />
+                </svg>
+              </span>
+              <div class="row-text"><div class="row-title">Personal</div></div>
+              <span class="count">5</span>
+              <span class="chevron" aria-hidden="true">›</span>
+            </div>
+            <div class="row">
+              <span class="list-icon" style="--tint: var(--h-orange)" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="7.5" width="18" height="12" rx="2.5" /><path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5M3 13h18" />
+                </svg>
+              </span>
+              <div class="row-text"><div class="row-title">Trabajo</div></div>
+              <span class="count">3</span>
+              <span class="chevron" aria-hidden="true">›</span>
+            </div>
+          </div>
+
+          <p class="footnote">
+            «Hoy» y «Con bandera» no son listas: son consultas sobre las que ya
+            existen. Por eso van arriba y separadas —borrar «Trabajo» es posible;
+            borrar «Hoy» no significaría nada—.
+          </p>
+        </div>
+
+        <nav class="tabbar" data-tab="tareas" aria-label="Secciones"></nav>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ══════════════════════════ HÁBITOS ══════════════════════════ -->
+  <figure class="device">
+    <figcaption>3 · Hábitos</figcaption>
+    <div class="bezel">
+      <div class="screen">
+        <div class="statusbar">
+          <span>7:12</span>
+          <span class="glyphs">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="battery" aria-hidden="true"><span></span></span>
+          </span>
+        </div>
+
+        <div class="scroll">
+          <div class="topbar">
+            <button class="chip" type="button">Editar</button>
+            <span style="display: flex; gap: 8px">
+              <button class="chip circle" type="button" aria-label="Historial">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <rect x="3" y="12" width="4" height="8" rx="1.4" />
+                  <rect x="10" y="7" width="4" height="13" rx="1.4" />
+                  <rect x="17" y="4" width="4" height="16" rx="1.4" />
+                </svg>
+              </button>
+              <button class="chip circle" type="button" aria-label="Nuevo hábito">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+            </span>
+          </div>
+
+          <h2 class="large-title">Hábitos</h2>
+
+          <div class="section-label">Activos</div>
+          <div class="card inset-separators" id="manage-list"></div>
+
+          <div class="section-label">Archivados</div>
+          <div class="card">
+            <div class="row">
+              <span class="dot" style="--habit: var(--h-yellow)" aria-hidden="true"></span>
+              <div class="row-text">
+                <div class="row-title" style="color: var(--label-2)">Tocar la guitarra</div>
+                <div class="row-sub">Archivado el 25 de agosto</div>
+              </div>
+            </div>
+          </div>
+
+          <p class="footnote">
+            Archivar no es borrar: conservan su historial. Un hábito que dejaste
+            hace tres meses no debería llevarse por delante la racha que sí
+            hiciste.
+          </p>
+        </div>
+
+        <nav class="tabbar" data-tab="habitos" aria-label="Secciones"></nav>
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ══════════════════════════ HISTORIAL ══════════════════════════ -->
+  <figure class="device">
+    <figcaption>4 · Historial</figcaption>
+    <div class="bezel">
+      <div class="screen">
+        <div class="statusbar">
+          <span>7:12</span>
           <span class="glyphs">
             <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             <span class="battery" aria-hidden="true"><span></span></span>
@@ -1167,10 +1635,9 @@
             <div class="stat"><b>84%</b><span>Este mes</span></div>
           </div>
 
-          <div class="section-label">Julio 2026</div>
-          <div class="card" style="padding: 16px 14px 18px">
+          <div class="card" style="padding: 16px 14px 18px; margin-top: 16px">
             <div class="month-head">
-              <strong>julio 2026</strong>
+              <strong>septiembre 2026</strong>
               <div class="month-nav">
                 <button type="button" aria-label="Mes anterior">‹</button>
                 <button type="button" aria-label="Mes siguiente">›</button>
@@ -1184,46 +1651,28 @@
           </div>
 
           <p class="footnote">
-            El arco de cada día indica qué fracción de los hábitos programados
-            cumpliste. Relleno completo = día perfecto.
+            La cabecera pone X en miércoles a propósito. Las iniciales del
+            sistema dan dos emes seguidas y la columna deja de poder leerse;
+            en España la convención es L M X J V S D.
           </p>
 
           <div class="section-label">Racha por hábito</div>
           <div class="card" id="streak-list"></div>
         </div>
 
-        <nav class="tabbar" aria-label="Secciones">
-          <button type="button" aria-selected="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.6-5" />
-            </svg>
-            Hoy
-          </button>
-          <button type="button" aria-selected="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
-            </svg>
-            Historial
-          </button>
-          <button type="button" aria-selected="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />
-            </svg>
-            Hábitos
-          </button>
-        </nav>
+        <nav class="tabbar" data-tab="habitos" aria-label="Secciones"></nav>
         <div class="home-indicator" aria-hidden="true"></div>
       </div>
     </div>
   </figure>
 
-  <!-- ════════════════════════ HÁBITOS ════════════════════════ -->
+  <!-- ══════════════════════════ ALARMAS ══════════════════════════ -->
   <figure class="device">
-    <figcaption>3 · Gestión</figcaption>
+    <figcaption>5 · Alarmas</figcaption>
     <div class="bezel">
       <div class="screen">
         <div class="statusbar">
-          <span>9:41</span>
+          <span>7:12</span>
           <span class="glyphs">
             <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
             <span class="battery" aria-hidden="true"><span></span></span>
@@ -1231,73 +1680,85 @@
         </div>
 
         <div class="scroll">
-          <div class="navbar">
-            <h2>Hábitos</h2>
-            <button class="nav-action" type="button" aria-label="Nuevo hábito">+</button>
+          <div class="topbar">
+            <span></span>
+            <button class="chip circle" type="button" aria-label="Nueva alarma">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
           </div>
 
-          <div class="section-label">Activos</div>
-          <div class="card" id="manage-list"></div>
+          <h2 class="large-title">Alarmas</h2>
 
-          <div class="section-label">Archivados</div>
-          <div class="card">
-            <div class="row">
-              <span class="dot" style="--habit: var(--h-yellow)"></span>
-              <div class="row-text">
-                <div class="row-title" style="color: var(--label-2)">Tocar la guitarra</div>
-                <div class="row-sub">Archivado el 4 de junio · mejor racha 9 días</div>
-              </div>
-              <span class="chevron" aria-hidden="true">›</span>
-            </div>
-          </div>
+          <div class="card" id="alarm-list" style="margin-top: 14px"></div>
 
           <p class="footnote">
-            Archivar conserva el historial y las rachas conseguidas. Eliminar sí
-            borra los registros del hábito de forma permanente.
+            «No registrada» no es un adorno: significa que la alarma está
+            guardada pero el sistema no la aceptó, así que no va a sonar.
+            Callarlo sería prometer un despertar que no existe.
           </p>
         </div>
 
-        <nav class="tabbar" aria-label="Secciones">
-          <button type="button" aria-selected="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" /><path d="m8.5 12.3 2.4 2.4 4.6-5" />
-            </svg>
-            Hoy
-          </button>
-          <button type="button" aria-selected="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="4.5" width="18" height="16" rx="3" /><path d="M3 9.5h18M8 3v3M16 3v3" />
-            </svg>
-            Historial
-          </button>
-          <button type="button" aria-selected="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01" />
-            </svg>
-            Hábitos
-          </button>
-        </nav>
+        <nav class="tabbar" data-tab="alarmas" aria-label="Secciones"></nav>
         <div class="home-indicator" aria-hidden="true"></div>
       </div>
     </div>
   </figure>
 
-  <!-- ═════════════════════ NUEVO HÁBITO ═════════════════════ -->
+  <!-- ══════════════════════ NUEVA ALARMA ══════════════════════ -->
   <figure class="device">
-    <figcaption>4 · Nuevo hábito</figcaption>
+    <figcaption>6 · Nueva alarma · ciclos de sueño</figcaption>
+    <div class="bezel">
+      <div class="screen">
+        <div class="statusbar">
+          <span>22:40</span>
+          <span class="glyphs">
+            <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+            <span class="battery" aria-hidden="true"><span></span></span>
+          </span>
+        </div>
+
+        <div class="scroll" style="padding-bottom: 28px">
+          <div class="sheet-bar" style="margin: 6px -20px 0; padding-left: 20px; padding-right: 20px">
+            <span class="cancel">Cancelar</span>
+            <strong>Nueva alarma</strong>
+            <span class="save">Añadir</span>
+          </div>
+
+          <div class="card" style="margin-top: 18px">
+            <div class="wake-picker">
+              <label for="wake-time">Suena a las</label>
+              <input id="wake-time" type="time" value="07:00" step="300" />
+            </div>
+          </div>
+
+          <div class="form-head" id="sleep-head">Para despertar a las 7:00</div>
+          <div class="card" id="sleep-list"></div>
+          <p class="footnote" id="sleep-caveat"></p>
+        </div>
+
+        <div class="home-indicator" aria-hidden="true"></div>
+      </div>
+    </div>
+  </figure>
+
+  <!-- ══════════════════════ NUEVO HÁBITO ══════════════════════ -->
+  <figure class="device">
+    <figcaption>7 · Nuevo hábito</figcaption>
     <div class="bezel">
       <div class="screen sheet-host">
         <div class="behind">
           <div class="statusbar">
-            <span>9:41</span>
+            <span>7:12</span>
             <span class="glyphs">
               <span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
               <span class="battery" aria-hidden="true"><span></span></span>
             </span>
           </div>
           <div class="scroll" style="padding-bottom: 20px">
-            <div class="navbar"><h2>Hábitos</h2></div>
-            <div class="card" id="manage-list-ghost"></div>
+            <h2 class="large-title">Hábitos</h2>
+            <div class="card inset-separators" id="manage-list-ghost" style="margin-top: 14px"></div>
           </div>
         </div>
 
@@ -1346,40 +1807,87 @@
 </div>
 
 <footer class="page-foot">
+  <h2>El acento, medido</h2>
+  <ul>
+    <li>
+      El acento actual es <strong>#344C5C</strong> en claro y
+      <strong>#49677A</strong> en oscuro, leídos de
+      <strong>AccentColor.colorset</strong>. En claro da
+      <strong>9,00:1</strong> sobre tarjeta blanca — el negro puro da 21:1 y el
+      azul de iOS 4,02:1—, así que no se lee como un color, se lee como texto.
+      Por eso la pestaña activa necesita una pastilla detrás para notarse.
+    </li>
+    <li>
+      En oscuro pasa lo contrario y es más serio: <strong>2,84:1</strong> sobre
+      la tarjeta oscura. Eso <strong>no llega al mínimo AA</strong> de 4,5:1 para
+      texto. La etiqueta de la pestaña activa y el «y 2 más» de las tareas caen
+      ahí.
+    </li>
+    <li>
+      Y hay un tercer sitio donde se paga, que no es texto: el arco del anillo y
+      el del calendario. En oscuro el relleno da <strong>2,13:1</strong> contra
+      su propia pista —el mínimo para un gráfico que lleva información es
+      3:1—, así que un día perfecto se distingue apenas de uno vacío. Con la
+      propuesta sube a <strong>5,26:1</strong>. Pon el tema en oscuro y mira el
+      calendario de la pantalla 4 con un acento y con el otro.
+    </li>
+    <li>
+      El grosor del anillo es el de la app, 11 puntos, no una versión
+      adelgazada. Con el acento actual pesa mucho para lo poco que dice; si el
+      acento se aclara, el mismo grosor lee distinto. Conviene decidir el color
+      antes de tocar el grosor, no a la vez.
+    </li>
+    <li>
+      La propuesta mantiene la familia de pizarra y solo mueve la luminancia:
+      <strong>#2F6F8F</strong> en claro (5,54:1) y <strong>#5FB0D4</strong> en
+      oscuro (7,01:1). Conmútala arriba y compara — sobre todo el anillo, el
+      calendario y la pestaña activa.
+    </li>
+  </ul>
+
   <h2>Lo que esta maqueta sí demuestra</h2>
   <ul>
     <li>
-      <strong>El anillo y la lista comparten estado.</strong> Marca un hábito en
-      la pantalla 1 y el anillo se recalcula; el día 27 del calendario de la
-      pantalla 2 también, porque es el mismo dato.
+      <strong>Jerarquía y flujo</strong> de las seis pantallas, con tipos y
+      espaciados de la escala de iOS y la paleta del sistema, no una inventada.
     </li>
     <li>
-      <strong>El color nunca es el único portador de información.</strong> El
-      toggle cambia de forma (círculo vacío → relleno con marca), no solo de
-      color, y los swatches seleccionados llevan marca además de anillo.
+      <strong>Los ciclos de sueño de verdad</strong>: el listado de la pantalla 6
+      ejecuta la misma aritmética que <strong>SleepCycleCalculator</strong>
+      —ciclo de 90 min, 15 de latencia, solo 6 y 5 ciclos—. Cambia la hora y mira
+      cómo se atenúan las opciones que ya no alcanzas.
     </li>
     <li>
-      <strong>«Diario» no es un caso especial.</strong> El conmutador «Todos los
-      días» solo activa los siete pills — es la misma máscara de
-      <code>WeekdaySet</code> del modelo, con los 7 bits puestos.
+      <strong>Que el estado no depende solo del color</strong>: el hábito
+      cumplido rellena el círculo y saca una marca; la tarea vencida dice la
+      fecha además de ponerse roja. En escala de grises se sigue leyendo.
+    </li>
+    <li>
+      <strong>El modo oscuro</strong> en las dos direcciones: el conmutador gana
+      sobre la preferencia del sistema, no solo cuando coinciden.
     </li>
   </ul>
 
   <h2>Lo que no demuestra</h2>
   <ul>
     <li>
-      <strong>No es SwiftUI.</strong> Es HTML imitando el sistema. El layout real
-      lo decide SwiftUI y diferirá en detalles de métrica.
+      <strong>Que el Swift compile.</strong> Esto es HTML. Lo único que dice si
+      la app compila y si pasan las pruebas es el CI.
     </li>
     <li>
-      <strong>La tipografía no es la correcta si ves esto en Windows.</strong> La
-      pila cae en Segoe UI Variable en lugar de SF Pro: los anchos y el
-      interletrado no coinciden con el dispositivo.
+      <strong>Que una alarma suene.</strong> AlarmKit registra la alarma y el
+      diálogo de permiso sale, pero que suene a su hora con el teléfono en
+      silencio solo lo dice un aparato de verdad.
     </li>
     <li>
-      <strong>Falta el Liquid Glass real de iOS 26.</strong>
-      <code>backdrop-filter</code> aproxima la translucidez de las barras, pero
-      no la refracción ni el brillo de bordes del material nativo.
+      <strong>El gesto y la física reales.</strong> Los muelles de aquí imitan a
+      los de SwiftUI; el arrastre, el rebote y el desplazamiento con inercia son
+      del sistema y no se replican con CSS.
+    </li>
+    <li>
+      <strong>Que dormir en múltiplos de ciclo sirva.</strong> No hay ensayo que
+      lo respalde. La cifra es orientativa y la app lo dice donde se lee, no en
+      una nota al pie.
     </li>
   </ul>
 </footer>
@@ -1387,16 +1895,34 @@
 <script>
   "use strict";
 
-  // ── Datos de ejemplo ───────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // DATOS DE EJEMPLO
+  // ══════════════════════════════════════════════════════════════
   // weekdays usa la convención de Foundation: 1 = domingo … 7 = sábado.
   const EVERY_DAY = [1, 2, 3, 4, 5, 6, 7];
 
   const HABITS = [
-    { name: "Meditar 10 minutos", notes: "Nada más levantarme", color: "green",  days: EVERY_DAY,        done: true,  streak: 12 },
-    { name: "Beber 2 litros de agua", notes: "", color: "teal",   days: EVERY_DAY,                       done: true,  streak: 7  },
-    { name: "Leer 20 páginas", notes: "Antes de dormir", color: "indigo", days: EVERY_DAY,               done: false, streak: 21 },
-    { name: "Correr", notes: "5 km suaves", color: "orange", days: [2, 4, 6],                            done: false, streak: 4  },
-    { name: "Estudiar inglés", notes: "30 min de repaso", color: "purple", days: [2, 3, 4, 5, 6],        done: false, streak: 9  }
+    { name: "Meditar 10 minutos", notes: "Nada más levantarme", color: "green",  days: EVERY_DAY,     done: true,  streak: 12 },
+    { name: "Beber 2 litros de agua", notes: "", color: "teal",                  days: EVERY_DAY,     done: true,  streak: 7  },
+    { name: "Leer 20 páginas", notes: "Antes de dormir", color: "indigo",        days: EVERY_DAY,     done: false, streak: 21 },
+    { name: "Correr", notes: "5 km suaves", color: "orange",                     days: [2, 4, 6],     done: false, streak: 4  },
+    { name: "Estudiar inglés", notes: "30 min de repaso", color: "purple",       days: [2,3,4,5,6],   done: false, streak: 9  }
+  ];
+
+  // Las cuatro que caben en Hoy, más el recuento de las que no.
+  const TASKS = [
+    { title: "Llamar al dentista", due: "Ayer a las 10:00", overdue: true,  prio: "!!!", flag: true,  color: "blue",   done: false },
+    { title: "Comprar pan",        due: "Hoy a las 9:00",   overdue: false, prio: "",    flag: false, color: "blue",   done: false },
+    { title: "Enviar el informe",  due: "Hoy a las 18:00",  overdue: false, prio: "!",   flag: true,  color: "orange", done: false },
+    { title: "Regar las plantas",  due: "Hoy",              overdue: false, prio: "",    flag: false, color: "blue",   done: false }
+  ];
+  const HIDDEN_TASKS = 2;
+
+  const ALARMS = [
+    { time: "6:45", label: "Gimnasio",     days: "Mar, Jue",       on: true,  registered: false },
+    { time: "7:00", label: "Despertar",    days: "Días laborables", on: true,  registered: true  },
+    { time: "9:30", label: "Fin de semana", days: "Fines de semana", on: true, registered: true  },
+    { time: "15:00", label: "Siesta",      days: "Una vez",         on: false, registered: true  }
   ];
 
   const WEEKDAY_INITIALS = { 2: "L", 3: "M", 4: "X", 5: "J", 6: "V", 7: "S", 1: "D" };
@@ -1420,6 +1946,10 @@
     'c1 .9 1.6-.3 1.4-1.6C10.5 6.6 12 2 12 2Zm0 9.6c1.6 0 2.8 1.4 2.8 3.1 0 2.3-1.4 ' +
     '4.3-2.8 5.3-1.4-1-2.8-3-2.8-5.3 0-1.7 1.2-3.1 2.8-3.1Z"/></svg>';
 
+  const FLAG_SVG =
+    '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' +
+    '<path d="M5 3v18h1.6v-7.2h5.1l.5 1.6h6.3V5.3h-5.2L12.8 3H5Z"/></svg>';
+
   function scheduleText(days) {
     if (days.length === 7) return "Todos los días";
     if (days.length === 0) return "Sin días";
@@ -1432,7 +1962,44 @@
       .join(", ");
   }
 
-  // ── Pantalla 1: lista de hoy ───────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // BARRA DE PESTAÑAS
+  // Se inyecta en vez de repetirse seis veces: cambiar un icono o el
+  // orden en un sitio y que se descuadre en otro es el tipo de fallo
+  // que una maqueta introduce sola.
+  // ══════════════════════════════════════════════════════════════
+  const TABS = [
+    {
+      key: "hoy", label: "Hoy",
+      svg: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/>'
+    },
+    {
+      key: "tareas", label: "Tareas",
+      svg: '<path d="M8 6.5h12M8 12h12M8 17.5h12M4 6.5h.01M4 12h.01M4 17.5h.01"/>'
+    },
+    {
+      key: "habitos", label: "Hábitos",
+      svg: '<path d="M4 8.5h13a3.5 3.5 0 0 1 0 7H7"/><path d="m7.5 5 -3 3.5 3 3.5M16.5 12l3 3.5-3 3.5"/>'
+    },
+    {
+      key: "alarmas", label: "Alarmas",
+      svg: '<circle cx="12" cy="13" r="8"/><path d="M12 9.5V13l2.2 1.6M5 3 2.5 5.3M19 3l2.5 2.3"/>'
+    }
+  ];
+
+  document.querySelectorAll(".tabbar[data-tab]").forEach((bar) => {
+    const active = bar.dataset.tab;
+    bar.innerHTML = TABS.map((tab) =>
+      '<button type="button" aria-selected="' + (tab.key === active) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + tab.svg + "</svg>" +
+      tab.label + "</button>"
+    ).join("");
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // PANTALLA 1 · HOY
+  // ══════════════════════════════════════════════════════════════
   const todayList = document.getElementById("today-list");
 
   HABITS.forEach((habit, index) => {
@@ -1450,7 +2017,6 @@
       "</div></div>";
 
     const toggle = row.querySelector(".toggle");
-    // Estado optimista en el pointer-down: el acuse visual no espera al click.
     toggle.addEventListener("click", () => {
       HABITS[index].done = !HABITS[index].done;
       toggle.setAttribute("aria-pressed", String(HABITS[index].done));
@@ -1460,7 +2026,41 @@
     todayList.appendChild(row);
   });
 
-  // ── Anillo de progreso ─────────────────────────────────────────
+  // ── Tareas de hoy ─────────────────────────────────────────────
+  const taskList = document.getElementById("today-tasks");
+
+  TASKS.forEach((task, index) => {
+    const row = document.createElement("div");
+    row.className = "row" + (task.done ? " is-done" : "");
+    row.innerHTML =
+      '<button class="toggle" type="button" aria-pressed="' + task.done + '" ' +
+      'style="--habit: var(--h-' + task.color + ')" ' +
+      'aria-label="' + task.title + ', marcar como completada">' +
+      '<span class="well">' + CHECK_SVG + "</span></button>" +
+      '<div class="row-text">' +
+      '<div class="row-title">' +
+      (task.prio ? '<span class="prio" style="--tint: var(--h-' + task.color + ')">' + task.prio + "</span>" : "") +
+      task.title + "</div>" +
+      '<div class="row-sub' + (task.overdue ? " is-overdue" : "") + '">' + task.due + "</div>" +
+      "</div>" +
+      (task.flag ? '<span class="flag" aria-label="Con bandera">' + FLAG_SVG + "</span>" : "");
+
+    const toggle = row.querySelector(".toggle");
+    toggle.addEventListener("click", () => {
+      TASKS[index].done = !TASKS[index].done;
+      toggle.setAttribute("aria-pressed", String(TASKS[index].done));
+      row.classList.toggle("is-done", TASKS[index].done);
+    });
+
+    taskList.appendChild(row);
+  });
+
+  const more = document.createElement("div");
+  more.className = "more-row";
+  more.textContent = "y " + HIDDEN_TASKS + " tareas más";
+  taskList.appendChild(more);
+
+  // ── Anillo de progreso ────────────────────────────────────────
   const RADIUS = 50;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
   const ringFill = document.getElementById("ring-fill");
@@ -1476,28 +2076,22 @@
     const total = HABITS.length;
     const done = HABITS.filter((h) => h.done).length;
     const fraction = total === 0 ? 0 : done / total;
+    const left = total - done;
 
-    ringFill.setAttribute(
-      "stroke-dashoffset",
-      String(CIRCUMFERENCE * (1 - fraction))
-    );
+    ringFill.setAttribute("stroke-dashoffset", String(CIRCUMFERENCE * (1 - fraction)));
     ringPct.textContent = Math.round(fraction * 100) + "%";
     ringCount.textContent = done + " de " + total;
 
-    // El texto es específico del estado, no una plantilla genérica.
     if (done === 0) {
       ringTitle.textContent = "Empieza el día";
       ringSub.textContent = "Tienes " + total + " hábitos programados para hoy.";
     } else if (done === total) {
       ringTitle.textContent = "Día completo";
-      ringSub.textContent = "Los " + total + " hábitos de hoy, hechos.";
+      ringSub.textContent = "Has marcado todo lo de hoy.";
     } else {
-      const left = total - done;
       ringTitle.textContent = "Vas por buen camino";
-      // Concuerda el verbo, no solo el sustantivo: "Te queda 1 hábito".
-      ringSub.textContent = left === 1
-        ? "Te queda 1 hábito por marcar."
-        : "Te quedan " + left + " hábitos por marcar.";
+      ringSub.textContent =
+        left === 1 ? "Te queda 1 hábito por marcar." : "Te quedan " + left + " hábitos por marcar.";
     }
 
     // Mismo dato, otra pantalla: el día de hoy en el calendario.
@@ -1507,19 +2101,37 @@
     }
   }
 
-  // ── Pantalla 2: calendario de julio 2026 ───────────────────────
-  // El 1 de julio de 2026 cae en miércoles, así que la primera fila
-  // arranca con dos huecos (lunes y martes).
-  const LEADING_BLANKS = 2;
-  const DAYS_IN_MONTH = 31;
-  const TODAY = 27;
+  // ══════════════════════════════════════════════════════════════
+  // PANTALLA 3 · HÁBITOS
+  // ══════════════════════════════════════════════════════════════
+  // La misma lista aparece en la pantalla 3 y de fondo en la 7.
+  ["manage-list", "manage-list-ghost"].forEach((id) => {
+    const list = document.getElementById(id);
+    HABITS.forEach((habit) => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML =
+        '<span class="dot" style="--habit: var(--h-' + habit.color + ')"></span>' +
+        '<div class="row-text">' +
+        '<div class="row-title">' + habit.name + "</div>" +
+        '<div class="row-sub">' + scheduleText(habit.days) + "</div></div>" +
+        '<span class="chevron" aria-hidden="true">›</span>';
+      list.appendChild(row);
+    });
+  });
 
-  // Fracción cumplida por día, del 1 al 26. Datos de muestra plausibles:
-  // rachas largas con algún hueco, no una pauta perfecta.
-  const HISTORY = [
-    1, 1, 0.8, 1, 0.6, 0.4, 1, 1, 1, 0.8, 0, 0.2, 1,
-    1, 1, 1, 0.8, 1, 0.6, 1, 1, 1, 1, 0.8, 1, 1
-  ];
+  // ══════════════════════════════════════════════════════════════
+  // PANTALLA 4 · HISTORIAL
+  // Septiembre de 2026 empieza en martes, así que la primera fila
+  // arranca con un hueco.
+  // ══════════════════════════════════════════════════════════════
+  const LEADING_BLANKS = 1;
+  const DAYS_IN_MONTH = 30;
+  const TODAY = 14;
+
+  // Fracción cumplida por día, del 1 al 13. Rachas largas con algún
+  // hueco: una pauta perfecta no enseñaría nada del diseño.
+  const HISTORY = [1, 1, 0.8, 1, 0.6, 0.4, 1, 1, 1, 0.8, 0, 0.2, 1];
 
   const monthGrid = document.getElementById("month-grid");
 
@@ -1541,23 +2153,22 @@
       if (fraction === 1) cell.classList.add("is-perfect");
       cell.setAttribute(
         "aria-label",
-        day + " de julio: " + Math.round(fraction * 100) + "% completado"
+        day + " de septiembre: " + Math.round(fraction * 100) + "% completado"
       );
     } else if (day === TODAY) {
       cell.classList.add("is-today");
       cell.dataset.progress = "";
-      cell.setAttribute("aria-label", "Hoy, 27 de julio");
+      cell.setAttribute("aria-label", "Hoy, 14 de septiembre");
       todayCell.el = cell;
     } else {
       cell.classList.add("is-future");
-      cell.setAttribute("aria-label", day + " de julio, día futuro");
+      cell.setAttribute("aria-label", day + " de septiembre, día futuro");
     }
 
     cell.innerHTML = "<span>" + day + "</span>";
     monthGrid.appendChild(cell);
   }
 
-  // ── Racha por hábito ──────────────────────────────────────────
   const streakList = document.getElementById("streak-list");
 
   HABITS.slice()
@@ -1572,23 +2183,130 @@
       streakList.appendChild(row);
     });
 
-  // ── Pantalla 3 y fondo de la 4: gestión ───────────────────────
-  ["manage-list", "manage-list-ghost"].forEach((id) => {
-    const list = document.getElementById(id);
-    HABITS.forEach((habit) => {
-      const row = document.createElement("div");
-      row.className = "row";
-      row.innerHTML =
-        '<span class="dot" style="--habit: var(--h-' + habit.color + ')"></span>' +
-        '<div class="row-text">' +
-        '<div class="row-title">' + habit.name + "</div>" +
-        '<div class="row-sub">' + scheduleText(habit.days) + "</div></div>" +
-        '<span class="chevron" aria-hidden="true">›</span>';
-      list.appendChild(row);
+  // ══════════════════════════════════════════════════════════════
+  // PANTALLA 5 · ALARMAS
+  // ══════════════════════════════════════════════════════════════
+  const alarmList = document.getElementById("alarm-list");
+
+  ALARMS.forEach((alarm, index) => {
+    const row = document.createElement("div");
+    row.className = "row alarm-row" + (alarm.on ? "" : " is-off");
+
+    const detail = [alarm.label, alarm.days]
+      .concat(alarm.registered ? [] : ["no registrada"])
+      .join(" · ");
+
+    row.innerHTML =
+      '<div class="row-text">' +
+      '<div class="alarm-time">' + alarm.time + "</div>" +
+      '<div class="row-sub">' + detail + "</div></div>" +
+      '<button class="ios-switch" type="button" role="switch" aria-checked="' + alarm.on + '" ' +
+      'aria-label="' + alarm.label + ' a las ' + alarm.time + '"></button>';
+
+    const sw = row.querySelector(".ios-switch");
+    sw.addEventListener("click", () => {
+      ALARMS[index].on = !ALARMS[index].on;
+      sw.setAttribute("aria-checked", String(ALARMS[index].on));
+      row.classList.toggle("is-off", !ALARMS[index].on);
     });
+
+    alarmList.appendChild(row);
   });
 
-  // ── Pantalla 4: formulario ────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // PANTALLA 6 · CICLOS DE SUEÑO
+  // Puerto directo de SleepCycleCalculator.swift. Mismos parámetros y
+  // mismas reglas, incluido que solo se ofrecen 6 y 5 ciclos: 4 son 6
+  // horas, por debajo del mínimo de 7 de la AASM, y una app no debe
+  // empujar a dormir menos para que cuadre una cuenta.
+  // ══════════════════════════════════════════════════════════════
+  const CYCLE_MINUTES = 90;
+  const LATENCY_MINUTES = 15;
+  const OFFERED_CYCLES = [6, 5];
+  const RECOMMENDED_MINIMUM = 7 * 60;
+
+  // «Ahora» fijo a las 22:40, igual que la barra de estado de esa
+  // pantalla: si dependiera del reloj del navegador, la maqueta se
+  // vería distinta cada vez y no se podría juzgar.
+  const NOW_MINUTE_OF_DAY = 22 * 60 + 40;
+
+  function clockText(minuteOfDay) {
+    const m = ((minuteOfDay % 1440) + 1440) % 1440;
+    return Math.floor(m / 60) + ":" + String(m % 60).padStart(2, "0");
+  }
+
+  function durationText(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest === 0 ? hours + " h" : hours + " h " + rest + " min";
+  }
+
+  /** Minutos desde `now` hasta la próxima vez que el reloj marque esa hora. */
+  function minutesUntil(wakeMinuteOfDay, nowMinuteOfDay) {
+    const diff = wakeMinuteOfDay - nowMinuteOfDay;
+    return diff > 0 ? diff : diff + 1440;
+  }
+
+  const sleepHead = document.getElementById("sleep-head");
+  const sleepList = document.getElementById("sleep-list");
+  const sleepCaveat = document.getElementById("sleep-caveat");
+  const wakeInput = document.getElementById("wake-time");
+
+  sleepCaveat.textContent =
+    "Los ciclos duran unos 90 minutos de media, pero varían entre 70 y 120 " +
+    "según la persona y la noche, así que estas horas son orientativas. " +
+    "Dormir lo suficiente importa más que cuadrar ciclos: la recomendación " +
+    "para adultos es de 7 horas o más.";
+
+  function renderSleep() {
+    const [h, m] = wakeInput.value.split(":").map(Number);
+    const wake = h * 60 + m;
+    const untilWake = minutesUntil(wake, NOW_MINUTE_OF_DAY);
+
+    sleepHead.textContent = "Para despertar a las " + clockText(wake);
+    sleepList.innerHTML = "";
+
+    OFFERED_CYCLES.forEach((cycles) => {
+      const sleepMinutes = cycles * CYCLE_MINUTES;
+      const total = sleepMinutes + LATENCY_MINUTES;
+      // La hora de acostarse ya pasó si hace falta más tiempo del que
+      // queda hasta que suene.
+      const isPast = total > untilWake;
+      const bedtime = wake - total;
+
+      const row = document.createElement("div");
+      row.className = "row sleep-row" + (isPast ? " is-past" : "");
+      row.innerHTML =
+        '<span class="sleep-time">' + clockText(bedtime) + "</span>" +
+        '<span class="sleep-meta"><b>' + durationText(sleepMinutes) + "</b>" +
+        "<span>" + cycles + " ciclos</span></span>";
+      row.setAttribute(
+        "aria-label",
+        "Acostarse a las " + clockText(bedtime) + ", " + durationText(sleepMinutes) +
+        ", " + cycles + " ciclos" + (isPast ? ". Esta hora ya pasó." : "")
+      );
+      sleepList.appendChild(row);
+    });
+
+    // El ancla del «ahora»: sin ella, a las tres de la madrugada esto
+    // sería una lista de horas tachadas sin decir qué hacer.
+    const asleepIn = untilWake - LATENCY_MINUTES;
+    if (asleepIn > 0) {
+      const row = document.createElement("div");
+      row.className = "now-row";
+      row.innerHTML =
+        "<span>Si te acuestas ahora</span>" +
+        '<b class="' + (asleepIn < RECOMMENDED_MINIMUM ? "is-short" : "") + '">' +
+        durationText(asleepIn) + "</b>";
+      sleepList.appendChild(row);
+    }
+  }
+
+  wakeInput.addEventListener("input", renderSleep);
+
+  // ══════════════════════════════════════════════════════════════
+  // PANTALLA 7 · FORMULARIO DE HÁBITO
+  // ══════════════════════════════════════════════════════════════
   const swatches = document.getElementById("swatches");
   let selectedColor = "green";
 
@@ -1646,18 +2364,34 @@
       : "Programado: " + scheduleText(selectedDays);
   }
 
-  // ── Conmutador de apariencia ──────────────────────────────────
-  const themeButtons = document.querySelectorAll("[data-set-theme]");
+  // ══════════════════════════════════════════════════════════════
+  // APARIENCIA Y ACENTO
+  // ══════════════════════════════════════════════════════════════
+  const root = document.documentElement;
 
-  themeButtons.forEach((button) => {
+  document.querySelectorAll("[data-set-theme]").forEach((button) => {
     button.addEventListener("click", () => {
-      const theme = button.dataset.setTheme;
-      if (theme === "auto") {
-        delete document.documentElement.dataset.theme;
+      const value = button.dataset.setTheme;
+      if (value === "auto") {
+        root.removeAttribute("data-theme");
       } else {
-        document.documentElement.dataset.theme = theme;
+        root.setAttribute("data-theme", value);
       }
-      themeButtons.forEach((other) => {
+      document.querySelectorAll("[data-set-theme]").forEach((other) => {
+        other.setAttribute("aria-pressed", String(other === button));
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-set-accent]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const value = button.dataset.setAccent;
+      if (value === "actual") {
+        root.removeAttribute("data-accent");
+      } else {
+        root.setAttribute("data-accent", value);
+      }
+      document.querySelectorAll("[data-set-accent]").forEach((other) => {
         other.setAttribute("aria-pressed", String(other === button));
       });
     });
@@ -1666,4 +2400,5 @@
   // ── Arranque ──────────────────────────────────────────────────
   refreshProgress();
   refreshSchedule();
+  renderSleep();
 </script>
