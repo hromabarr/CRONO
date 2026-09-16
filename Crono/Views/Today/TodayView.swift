@@ -20,7 +20,23 @@ struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel = TodayViewModel()
-    @State private var showingSettings = false
+    @State private var sheet: TodaySheet?
+
+    private enum TodaySheet: Identifiable {
+        case settings
+        case newHabit
+        case routine(HabitRoutine, DayKey)
+        case day(DayKey)
+
+        var id: String {
+            switch self {
+            case .settings: "settings"
+            case .newHabit: "newHabit"
+            case let .routine(routine, day): "routine-\(routine.rawValue)-\(day)"
+            case let .day(day): "day-\(day)"
+            }
+        }
+    }
 
     /// Obligatorio: con propiedades almacenadas privadas, el inicializador que
     /// sintetiza Swift también es privado y las exige todas.
@@ -47,21 +63,58 @@ struct TodayView: View {
             digest: digest,
             onToggleHabit: toggleHabit,
             onToggleReminder: toggleReminder,
-            onOpenTab: onOpenTab
+            onOpenTab: onOpenTab,
+            onAddHabit: { sheet = .newHabit },
+            onOpenRoutine: { sheet = .routine($0, viewModel.today) }
         )
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(Text("Hoy"))
         .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { showingSettings = true } label: {
-                    Image(systemName: "gearshape")
-                }
-                .accessibilityLabel("Ajustes")
-            }
+        .toolbar { toolbarContent }
+        .sheet(item: $sheet) { destination in
+            sheetContent(destination)
         }
-        .sheet(isPresented: $showingSettings) {
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button { sheet = .settings } label: {
+                Image(systemName: "gearshape")
+            }
+            .accessibilityLabel("Ajustes")
+        }
+        ToolbarItemGroup(placement: .primaryAction) {
+            Menu {
+                Button("Corregir ayer", systemImage: "clock.arrow.circlepath") {
+                    if let yesterday = AppCalendar.current.dayKey(Date.now.dayKey, offsetByDays: -1) {
+                        sheet = .day(yesterday)
+                    }
+                }
+                NavigationLink("Ver historial") { HistoryView() }
+            } label: {
+                Image(systemName: "calendar")
+            }
+            .accessibilityLabel("Historial y registros")
+
+            Button { sheet = .newHabit } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityLabel("Nuevo hábito")
+        }
+    }
+
+    @ViewBuilder
+    private func sheetContent(_ destination: TodaySheet) -> some View {
+        switch destination {
+        case .settings:
             SettingsView()
+        case .newHabit:
+            HabitFormView(viewModel: HabitFormViewModel(mode: .create, store: store))
+        case let .routine(routine, day):
+            RoutineSessionView(routine: routine, day: day)
+        case let .day(day):
+            HabitDayEditorView(day: day)
         }
     }
 

@@ -11,7 +11,7 @@ final class HistoryViewModel {
     private let calculator: StreakCalculator
     private let calendar: Calendar
 
-    let today: DayKey
+    private(set) var today: DayKey
 
     /// Mes que se está mirando. Empieza en el mes actual.
     var visibleMonth: MonthIdentifier
@@ -52,6 +52,12 @@ final class HistoryViewModel {
 
     func goToCurrentMonth() {
         visibleMonth = calendar.monthIdentifier(from: today)
+    }
+
+    func refreshToday() {
+        let wasCurrentMonth = visibleMonth == calendar.monthIdentifier(from: today)
+        today = calendar.dayKey(from: .now)
+        if wasCurrentMonth { goToCurrentMonth() }
     }
 
     // MARK: - Rejilla del mes
@@ -120,7 +126,7 @@ final class HistoryViewModel {
         guard dayCount > 0, !habits.isEmpty else { return [:] }
 
         // Los conjuntos de compleciones se materializan una vez, no por día.
-        let snapshots = habits.map { HabitSnapshot($0) }
+        let snapshots = habits.map { HabitSnapshot($0, calendar: calendar) }
         var result: [DayKey: Double] = [:]
 
         for day in 1...dayCount {
@@ -130,7 +136,7 @@ final class HistoryViewModel {
             else { continue }
 
             let due = snapshots.filter {
-                $0.schedule.contains(weekday: weekday) && dayKey >= $0.createdDayKey
+                $0.includes(dayKey, weekday: weekday)
             }
             guard !due.isEmpty else { continue }
 
@@ -150,20 +156,18 @@ final class HistoryViewModel {
     /// pintado a relleno completo es un día que cuenta para la racha. Contar
     /// "días con al menos un hábito" daría un número más bonito y sin sentido.
     func aggregateStats(for habits: [Habit]) -> HabitStats {
-        let active = habits.filter(\.isActive)
-        guard !active.isEmpty else { return .zero }
-
-        let snapshots = active.map { HabitSnapshot($0) }
-        let unionSchedule = snapshots.reduce(into: WeekdaySet()) { $0.formUnion($1.schedule) }
+        let snapshots = habits.map { HabitSnapshot($0, calendar: calendar) }
         guard let earliest = snapshots.map(\.createdDayKey).min() else { return .zero }
 
         var perfectDays: Set<DayKey> = []
+        var scheduledDays: [DayKey] = []
         for dayKey in calendar.dayKeys(from: earliest, to: today) {
             guard let weekday = calendar.weekday(fromDayKey: dayKey) else { continue }
             let due = snapshots.filter {
-                $0.schedule.contains(weekday: weekday) && dayKey >= $0.createdDayKey
+                $0.includes(dayKey, weekday: weekday)
             }
             guard !due.isEmpty else { continue }
+            scheduledDays.append(dayKey)
             if due.allSatisfy({ $0.completed.contains(dayKey) }) {
                 perfectDays.insert(dayKey)
             }
@@ -172,26 +176,19 @@ final class HistoryViewModel {
         // El porcentaje se acota al mes visible; las rachas, a toda la historia.
         let monthStart = calendar.dayKey(in: visibleMonth, day: 1) ?? earliest
 
-        return HabitStats(
-            currentStreak: calculator.currentStreak(
-                schedule: unionSchedule,
-                completed: perfectDays,
-                createdDayKey: earliest,
-                today: today
-            ),
-            bestStreak: calculator.bestStreak(
-                schedule: unionSchedule,
-                completed: perfectDays,
-                createdDayKey: earliest,
-                today: today
-            ),
-            completionRate: calculator.completionRate(
-                schedule: unionSchedule,
-                completed: perfectDays,
-                from: max(monthStart, earliest),
-                to: min(monthEnd(of: visibleMonth), today)
-            )
-        )
+        // Only days with at least one due habit count; archived habits must not
+        // create fictitious failures after their archive date.
+        var run = 0
+        var best = 0
+        for day in scheduledDays {
+            if day == today && !perfectDays.contains(day) { continue }
+            run = perfectDays.contains(day) ? run + 1 : 0
+            best = max(best, run)
+        }
+        let monthDays = scheduledDays.filter { $0 >= monthStart && $0 <= monthEnd(of: visibleMonth) }
+        let monthDone = monthDays.filter { perfectDays.contains($0) }.count
+        let rate = monthDays.isEmpty ? 0 : Double(monthDone) / Double(monthDays.count)
+        return HabitStats(currentStreak: run, bestStreak: best, completionRate: rate)
     }
 
     /// Racha actual de un hábito, lista para dibujar.
@@ -210,7 +207,6 @@ final class HistoryViewModel {
     /// Racha actual de cada hábito, de mayor a menor.
     func streaks(for habits: [Habit]) -> [StreakEntry] {
         habits
-            .filter(\.isActive)
             .map { StreakEntry(habit: $0, streak: calculator.currentStreak(for: $0, today: today)) }
             .sorted { $0.streak > $1.streak }
     }
@@ -249,10 +245,18 @@ private struct HabitSnapshot {
     let schedule: WeekdaySet
     let createdDayKey: DayKey
     let completed: Set<DayKey>
+    let archivedDayKey: DayKey?
 
-    init(_ habit: Habit) {
+    init(_ habit: Habit, calendar: Calendar) {
         self.schedule = habit.schedule
-        self.createdDayKey = habit.createdDayKey
+        self.createdDayKey = calendar.dayKey(from: habit.createdAt)
         self.completed = habit.completedDayKeys
+        self.archivedDayKey = habit.archivedAt.map { calendar.dayKey(from: $0) }
+    }
+
+    func includes(_ day: DayKey, weekday: Int) -> Bool {
+        if completed.contains(day) { return true }
+        guard day >= createdDayKey, day <= (archivedDayKey ?? Int.max) else { return false }
+        return schedule.contains(weekday: weekday)
     }
 }

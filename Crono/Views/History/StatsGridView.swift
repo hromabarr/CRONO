@@ -73,8 +73,12 @@ struct HabitStreakRow: View {
                 .fill(habit.color.color)
                 .frame(width: 12, height: 12)
 
-            Text(habit.name)
-                .font(.body)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(habit.name).font(.body)
+                if !habit.isActive {
+                    Text("Archivado").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
 
             Spacer(minLength: 8)
 
@@ -98,6 +102,7 @@ struct HabitStreakRow: View {
                 ? "\(habit.name), racha de 1 día"
                 : "\(habit.name), racha de \(streak) días"
         )
+        .accessibilityValue(habit.isActive ? "" : "Archivado")
     }
 }
 

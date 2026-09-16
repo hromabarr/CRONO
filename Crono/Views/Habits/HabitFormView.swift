@@ -23,11 +23,13 @@ struct HabitFormView: View {
         NavigationStack {
             Form {
                 nameSection
+                routineSection
                 colorSection
                 scheduleSection
                 if viewModel.isEditing { dangerZone }
             }
             .navigationTitle(viewModel.navigationTitle)
+            .habitStoreFailureAlert()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -74,6 +76,20 @@ struct HabitFormView: View {
                 .textInputAutocapitalization(.sentences)
         } header: {
             Text("Nombre")
+        }
+    }
+
+    private var routineSection: some View {
+        Section {
+            Picker("Momento", selection: $viewModel.routine) {
+                ForEach(HabitRoutine.allCases) { routine in
+                    Text(routine.title).tag(routine)
+                }
+            }
+        } header: {
+            Text("Rutina")
+        } footer: {
+            Text("Se agrupará en Hoy con los hábitos de ese momento. Puedes ordenar los pasos desde Hábitos.")
         }
     }
 

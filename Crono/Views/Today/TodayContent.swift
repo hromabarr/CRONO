@@ -7,9 +7,11 @@ struct TodayContent: View {
     let onToggleHabit: (Habit) -> Void
     let onToggleReminder: (Reminder) -> Void
     let onOpenTab: (AppTab) -> Void
+    let onAddHabit: () -> Void
+    let onOpenRoutine: (HabitRoutine) -> Void
 
     var body: some View {
-        if digest.isEmpty {
+        if digest.showsEmptyState {
             emptyState
         } else {
             ScrollView {
@@ -18,7 +20,9 @@ struct TodayContent: View {
                     digest: digest,
                     onToggleHabit: onToggleHabit,
                     onToggleReminder: onToggleReminder,
-                    onOpenTab: onOpenTab
+                    onOpenTab: onOpenTab,
+                    onAddHabit: onAddHabit,
+                    onOpenRoutine: onOpenRoutine
                 )
             }
         }
@@ -33,10 +37,10 @@ struct TodayContent: View {
     private var emptyState: some View {
         EmptyStateView(
             title: "Nada pendiente",
-            message: "No tienes hábitos ni tareas para hoy. Puedes añadir algo desde Tareas o Hábitos.",
+            message: "No tienes hábitos ni tareas para hoy. Añade un hábito para empezar tu rutina.",
             systemImage: "checkmark.circle",
-            actionTitle: "Ir a Tareas",
-            action: { onOpenTab(.reminders) }
+            actionTitle: "Añadir hábito",
+            action: onAddHabit
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

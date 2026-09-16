@@ -93,7 +93,8 @@ enum PreviewData {
                 color: color,
                 schedule: schedule,
                 createdAt: createdAt,
-                sortIndex: index
+                sortIndex: index,
+                routine: index == 0 || index == 3 ? .morning : (index == 2 || index == 4 ? .evening : .anytime)
             )
             context.insert(habit)
 

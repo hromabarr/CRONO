@@ -11,6 +11,8 @@ struct TodayScrollContent: View {
     let onToggleHabit: (Habit) -> Void
     let onToggleReminder: (Reminder) -> Void
     let onOpenTab: (AppTab) -> Void
+    let onAddHabit: () -> Void
+    let onOpenRoutine: (HabitRoutine) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,12 +39,41 @@ struct TodayScrollContent: View {
     private var habitsBlock: some View {
         if !digest.scheduledHabits.isEmpty {
             summary
-            SectionLabel("Hábitos de hoy")
-            TodayHabitsCard(
-                viewModel: viewModel,
-                habits: digest.scheduledHabits,
-                onToggle: onToggleHabit
-            )
+            ForEach(HabitRoutine.allCases) { routine in
+                routineBlock(routine)
+            }
+            if digest.scheduledHabits.allSatisfy({ $0.routine == .anytime }) {
+                Button("Organizar mis rutinas") { onOpenTab(.habits) }
+                    .font(.subheadline)
+                    .padding(.top, 12)
+                Text("Edita un hábito y elige Mañana o Noche. Usa Editar para ordenar los pasos.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+            }
+        } else {
+            Text("Hoy no tienes hábitos programados.")
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 12)
+            Button("Añadir hábito", action: onAddHabit)
+        }
+    }
+
+    @ViewBuilder
+    private func routineBlock(_ routine: HabitRoutine) -> some View {
+        let habits = digest.scheduledHabits.filter { $0.routine == routine }
+        if !habits.isEmpty {
+            SectionLabel(routine.title)
+            if routine == .anytime {
+                TodayHabitsCard(viewModel: viewModel, habits: habits, onToggle: onToggleHabit)
+            } else {
+                TodayRoutineCard(
+                    routine: routine,
+                    habits: habits,
+                    day: digest.today,
+                    onOpen: { onOpenRoutine(routine) }
+                )
+            }
         }
     }
 

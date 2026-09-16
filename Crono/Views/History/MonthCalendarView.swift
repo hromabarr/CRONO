@@ -10,6 +10,7 @@ struct MonthCalendarView: View {
     private let accessibilityLabel: (HistoryViewModel.DayCell) -> String?
     private let onPrevious: () -> Void
     private let onNext: () -> Void
+    private let onSelectDay: (DayKey) -> Void
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
 
@@ -20,7 +21,8 @@ struct MonthCalendarView: View {
         canGoForward: Bool,
         accessibilityLabel: @escaping (HistoryViewModel.DayCell) -> String?,
         onPrevious: @escaping () -> Void,
-        onNext: @escaping () -> Void
+        onNext: @escaping () -> Void,
+        onSelectDay: @escaping (DayKey) -> Void = { _ in }
     ) {
         self.title = title
         self.cells = cells
@@ -29,6 +31,7 @@ struct MonthCalendarView: View {
         self.accessibilityLabel = accessibilityLabel
         self.onPrevious = onPrevious
         self.onNext = onNext
+        self.onSelectDay = onSelectDay
     }
 
     var body: some View {
@@ -50,7 +53,7 @@ struct MonthCalendarView: View {
 
             LazyVGrid(columns: columns, spacing: 6) {
                 ForEach(cells) { cell in
-                    CalendarDayCell(cell: cell, accessibilityLabel: accessibilityLabel(cell))
+                    dayCell(cell)
                 }
             }
         }
@@ -83,6 +86,19 @@ struct MonthCalendarView: View {
             }
         }
         .padding(.bottom, 12)
+    }
+
+    @ViewBuilder
+    private func dayCell(_ cell: HistoryViewModel.DayCell) -> some View {
+        if let day = cell.dayKey, cell.state == .past || cell.state == .today {
+            Button { onSelectDay(day) } label: {
+                CalendarDayCell(cell: cell, accessibilityLabel: accessibilityLabel(cell))
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Ver y corregir los registros de este día")
+        } else {
+            CalendarDayCell(cell: cell, accessibilityLabel: accessibilityLabel(cell))
+        }
     }
 
     private func monthButton(

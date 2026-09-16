@@ -49,14 +49,16 @@ final class HabitStore {
         name: String,
         notes: String = "",
         color: HabitColor = .default,
-        schedule: WeekdaySet = .everyDay
+        schedule: WeekdaySet = .everyDay,
+        routine: HabitRoutine = .anytime
     ) -> Habit? {
         let habit = Habit(
             name: name.trimmedForStorage,
             notes: notes.trimmedForStorage,
             color: color,
             schedule: schedule,
-            sortIndex: nextSortIndex()
+            sortIndex: nextSortIndex(),
+            routine: routine
         )
         context.insert(habit)
 
@@ -74,12 +76,14 @@ final class HabitStore {
         name: String,
         notes: String,
         color: HabitColor,
-        schedule: WeekdaySet
+        schedule: WeekdaySet,
+        routine: HabitRoutine? = nil
     ) {
         habit.name = name.trimmedForStorage
         habit.notes = notes.trimmedForStorage
         habit.color = color
         habit.schedule = schedule
+        if let routine { habit.routine = routine }
 
         if !save(action: "guardar los cambios") { context.rollback() }
     }
@@ -129,6 +133,10 @@ final class HabitStore {
     /// sobre una relación, así que se garantiza buscando antes de insertar.
     func toggleCompletion(for habit: Habit, on dayKey: DayKey, today: DayKey? = nil) {
         let referenceToday = today ?? Date.now.dayKey
+        guard calendar.date(fromDayKey: dayKey) != nil else {
+            failure = StoreFailure(action: "marcar el hábito", reason: "La fecha no es válida.")
+            return
+        }
 
         // Marcar el futuro no significa nada: un hábito no puede cumplirse antes
         // de que llegue su día.
@@ -151,6 +159,10 @@ final class HabitStore {
         if let existing = habit.completion(on: dayKey) {
             context.delete(existing)
         } else {
+            if let archivedAt = habit.archivedAt, dayKey > calendar.dayKey(from: archivedAt) {
+                failure = StoreFailure(action: "marcar el hábito", reason: "El hábito ya estaba archivado ese día.")
+                return
+            }
             let completion = HabitCompletion(dayKey: dayKey)
             // Insertar antes de enlazar: así SwiftData ya gestiona el objeto
             // cuando se establece la relación inversa.
@@ -216,6 +228,7 @@ final class HabitStore {
 
     /// Persiste y traduce el fallo a algo mostrable. Devuelve `false` si falló.
     private func save(action: String) -> Bool {
+        failure = nil
         // Sin cambios pendientes no se toca el disco. Editar un hábito sin
         // modificar nada, o reordenar dejándolo en el mismo sitio, no debería
         // provocar escritura alguna ni, sobre todo, poder fallar.

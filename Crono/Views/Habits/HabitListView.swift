@@ -126,7 +126,7 @@ private struct ActiveHabitRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(habit.name)
                         .foregroundStyle(.primary)
-                    Text(habit.schedule.displayDescription)
+                    Text("\(habit.routine.title) · \(habit.schedule.displayDescription)")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -137,7 +137,7 @@ private struct ActiveHabitRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(habit.name), \(habit.schedule.displayDescription)")
+        .accessibilityLabel("\(habit.name), \(habit.routine.title), \(habit.schedule.displayDescription)")
         .accessibilityHint("Toca para editar")
         .accessibilityAddTraits(.isButton)
     }

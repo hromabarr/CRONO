@@ -19,6 +19,12 @@ import SwiftData
 /// Aquí el descriptor se construye con sentencias sueltas y tipos anotados, que
 /// el compilador comprueba una a una. Además deja de estar duplicado.
 enum HabitQueries {
+    /// History includes archived habits; their dates are bounded in the model.
+    static var all: FetchDescriptor<Habit> {
+        var descriptor = FetchDescriptor<Habit>(sortBy: [SortDescriptor(\Habit.sortIndex)])
+        descriptor.relationshipKeyPathsForPrefetching = [\.completions]
+        return descriptor
+    }
 
     /// Hábitos activos, en el orden elegido por el usuario.
     static var active: FetchDescriptor<Habit> {

@@ -50,7 +50,7 @@ struct TodayHeaderView: View {
         )
         TodayHeaderView(
             progress: .init(completed: 5, total: 5),
-            headline: "Día completo",
+            headline: "Hábitos completados",
             detail: "Los 5 hábitos de hoy, hechos."
         )
     }

@@ -110,7 +110,7 @@ final class TodayViewModel {
     func headline(for progress: DayProgress) -> String {
         if progress.total == 0 { return "Nada programado" }
         if progress.completed == 0 { return "Empieza el día" }
-        if progress.isComplete { return "Día completo" }
+        if progress.isComplete { return "Hábitos completados" }
         return "Vas por buen camino"
     }
 

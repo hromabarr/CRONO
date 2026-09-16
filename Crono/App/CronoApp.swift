@@ -12,7 +12,7 @@ struct CronoApp: App {
     private let storageWarning: String?
 
     init() {
-        // La lista de modelos vive en `CronoSchemaV1`, y el plan de migración
+        // La lista de modelos actual vive en `CronoSchemaV2`, y el plan de migración
         // viaja con ella: sin él, el primer cambio de forma de los datos
         // invalidaría el almacén del usuario en lugar de migrarlo.
         let schema = Schema.crono

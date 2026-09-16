@@ -197,7 +197,7 @@ extension StreakCalculator {
             schedule: habit.schedule,
             completed: habit.completedDayKeys,
             createdDayKey: habit.createdDayKey,
-            today: today
+            today: min(today, habit.archivedAt.map { calendar.dayKey(from: $0) } ?? today)
         )
     }
 }

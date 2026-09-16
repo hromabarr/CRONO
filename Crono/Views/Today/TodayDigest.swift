@@ -32,6 +32,9 @@ struct TodayDigest {
         scheduledHabits.isEmpty && reminders.isEmpty
     }
 
+    /// A free day may still have an alarm worth showing.
+    var showsEmptyState: Bool { isEmpty && nextAlarm == nil }
+
     // MARK: - Recorte de tareas
 
     /// Cuántas tareas caben en el resumen antes de mandar a la pestaña completa.

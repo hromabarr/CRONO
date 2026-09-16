@@ -6,10 +6,7 @@ import Testing
 
 /// Pruebas del esquema versionado y su plan de migración.
 ///
-/// Ninguna de estas comprueba una migración —no hay ninguna todavía—. Lo que
-/// vigilan es lo que sí puede romperse en silencio: que el esquema deje de
-/// nombrar todos los modelos, o que el contenedor deje de abrirse con el plan
-/// puesto.
+/// Includes an on-disk V1 → V2 migration with every model and its relationships.
 @MainActor
 @Suite("Esquema y migración")
 struct SchemaVersionTests {
@@ -21,15 +18,12 @@ struct SchemaVersionTests {
         #expect(CronoSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
     }
 
-    @Test("El plan declara la V1 y ninguna etapa")
-    func planHasOnlyV1() {
+    @Test("El plan migra V1 a V2")
+    func planIncludesV2() {
         let names = CronoMigrationPlan.schemas.map { String(describing: $0) }
-        #expect(names == ["CronoSchemaV1"])
+        #expect(names == ["CronoSchemaV1", "CronoSchemaV2"])
 
-        // Sin segunda versión no hay nada que migrar. El día que la haya, esta
-        // prueba falla y obliga a mirar la nota de CronoSchema.swift sobre
-        // congelar la V1 antes de tocar los tipos vivos.
-        #expect(CronoMigrationPlan.stages.isEmpty)
+        #expect(CronoMigrationPlan.stages.count == 1)
     }
 
     // MARK: - Los modelos
@@ -46,7 +40,7 @@ struct SchemaVersionTests {
 
     @Test("La lista de modelos y las entidades del esquema no se separan")
     func modelsMatchEntities() {
-        let declared = CronoSchemaV1.models.map { String(describing: $0) }.sorted()
+        let declared = CronoSchemaV2.models.map { String(describing: $0) }.sorted()
         let entities = Schema.crono.entities.map(\.name).sorted()
         #expect(declared == entities)
     }
@@ -62,7 +56,7 @@ struct SchemaVersionTests {
             configurations: configuration
         )
 
-        #expect(container.schema.version == Schema.Version(1, 0, 0))
+        #expect(container.schema.version == Schema.Version(2, 0, 0))
     }
 
     @Test("Los datos van y vuelven a través del esquema versionado")
@@ -104,5 +98,79 @@ struct SchemaVersionTests {
         #expect(lists.count == 1)
         #expect(tasks.count == 1)
         #expect(alarmItems.count == 1)
+    }
+
+    @Test("Migrar conserva hábitos, registros, tareas, subtareas y alarmas")
+    func migrationPreservesExistingData() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("migration.store")
+        let habitID = UUID()
+        let alarmID = UUID()
+
+        try writeV1Store(at: url, habitID: habitID, alarmID: alarmID)
+        try verifyV2Store(at: url, habitID: habitID, alarmID: alarmID)
+
+        // Reopening after assigning a routine exercises disk persistence too.
+        let schema = Schema.crono
+        let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        let reopened = try ModelContainer(for: schema, migrationPlan: CronoMigrationPlan.self, configurations: config)
+        let habits = try reopened.mainContext.fetch(FetchDescriptor<Habit>())
+        #expect(habits.first?.routine == .morning)
+    }
+
+    private func writeV1Store(at url: URL, habitID: UUID, alarmID: UUID) throws {
+        let schema = Schema(versionedSchema: CronoSchemaV1.self)
+        let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, configurations: config)
+        let context = container.mainContext
+        let habit = CronoSchemaV1.Habit(uuid: habitID, name: "Leer", notes: "20 páginas", color: .indigo, sortIndex: 3)
+        let completion = CronoSchemaV1.HabitCompletion(dayKey: 20260914)
+        context.insert(habit)
+        context.insert(completion)
+        completion.habit = habit
+
+        let list = CronoSchemaV1.ReminderList(name: "Casa", color: .green)
+        let task = CronoSchemaV1.Reminder(title: "Compra", dueDayKey: 20260915, priority: .high, recurrence: .daily)
+        let step = CronoSchemaV1.Reminder(title: "Pan")
+        context.insert(list)
+        context.insert(task)
+        context.insert(step)
+        task.list = list
+        step.parent = task
+        let alarm = CronoSchemaV1.AlarmItem(minuteOfDay: 420, systemAlarmID: alarmID)
+        context.insert(alarm)
+        try context.save()
+    }
+
+    private func verifyV2Store(at url: URL, habitID: UUID, alarmID: UUID) throws {
+        let schema = Schema.crono
+        let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, migrationPlan: CronoMigrationPlan.self, configurations: config)
+        let context = container.mainContext
+        let habit = try #require(context.fetch(FetchDescriptor<Habit>()).first)
+        #expect(habit.uuid == habitID)
+        #expect(habit.name == "Leer")
+        #expect(habit.notes == "20 páginas")
+        #expect(habit.color == .indigo)
+        #expect(habit.sortIndex == 3)
+        #expect(habit.routine == .anytime)
+        #expect(habit.completions.count == 1)
+        #expect(habit.isCompleted(on: 20260914))
+        #expect(habit.completions.first?.habit?.uuid == habitID)
+        let list = try #require(context.fetch(FetchDescriptor<ReminderList>()).first)
+        let task = try #require(list.reminders.first)
+        #expect(task.title == "Compra")
+        #expect(task.priority == .high)
+        #expect(task.recurrence == .daily)
+        #expect(task.dueDayKey == 20260915)
+        #expect(task.subtasks.first?.title == "Pan")
+        #expect(task.subtasks.first?.parent?.uuid == task.uuid)
+        let alarm = try #require(context.fetch(FetchDescriptor<AlarmItem>()).first)
+        #expect(alarm.minuteOfDay == 420)
+        #expect(alarm.systemAlarmID == alarmID)
+        habit.routine = .morning
+        try context.save()
     }
 }

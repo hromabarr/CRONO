@@ -8,9 +8,15 @@ import SwiftUI
 /// al mismo nivel, y sacarlo de la barra de pestañas deja el sitio que necesitan
 /// las tareas y las alarmas.
 struct HistoryView: View {
-    @Query(HabitQueries.active) private var activeHabits: [Habit]
+    @Query(HabitQueries.all) private var allHabits: [Habit]
 
     @State private var viewModel = HistoryViewModel()
+    @State private var selectedDay: SelectedDay?
+    @Environment(\.scenePhase) private var scenePhase
+
+    private struct SelectedDay: Identifiable {
+        let id: DayKey
+    }
 
     /// Necesario porque las propiedades almacenadas son privadas: el
     /// inicializador sintetizado sería privado y exigiría `activeHabits`.
@@ -18,16 +24,22 @@ struct HistoryView: View {
 
     var body: some View {
         ScrollView {
-            if activeHabits.isEmpty {
+            if allHabits.isEmpty {
                 EmptyStateView.noHistory
                     .padding(.top, 60)
             } else {
-                HistoryContent(viewModel: viewModel, habits: activeHabits)
+                HistoryContent(viewModel: viewModel, habits: allHabits, onSelectDay: { selectedDay = SelectedDay(id: $0) })
             }
         }
         .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle(Text("Historial"))
         .navigationBarTitleDisplayMode(.large)
+        .sheet(item: $selectedDay) { selection in
+            HabitDayEditorView(day: selection.id)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { viewModel.refreshToday() }
+        }
     }
 }
 
@@ -36,6 +48,7 @@ struct HistoryView: View {
 private struct HistoryContent: View {
     let viewModel: HistoryViewModel
     let habits: [Habit]
+    let onSelectDay: (DayKey) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,7 +61,7 @@ private struct HistoryContent: View {
 
             calendar
 
-            Text("El anillo de cada día indica qué fracción de los hábitos programados cumpliste.")
+            Text("Toca un día para corregir sus registros. El anillo indica la fracción de hábitos cumplidos e incluye los archivados hasta su fecha de archivo.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,7 +84,8 @@ private struct HistoryContent: View {
             canGoForward: viewModel.canGoForward,
             accessibilityLabel: { viewModel.accessibilityLabel(for: $0) },
             onPrevious: viewModel.goToPreviousMonth,
-            onNext: viewModel.goToNextMonth
+            onNext: viewModel.goToNextMonth,
+            onSelectDay: onSelectDay
         )
         // El gesto se limita al calendario en lugar de a todo el contenido: un
         // DragGesture sobre el ScrollView entero le disputa el desplazamiento

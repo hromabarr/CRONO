@@ -39,6 +39,9 @@ final class Habit {
     /// Posición en la lista, controlada por el usuario.
     var sortIndex: Int
 
+    /// Nil in migrated V1 records; interpreted as «Durante el día».
+    var routineRaw: String?
+
     /// Días en los que se marcó como completado. La existencia de un registro
     /// *es* la compleción; no hay registros con valor "false".
     @Relationship(deleteRule: .cascade, inverse: \HabitCompletion.habit)
@@ -52,7 +55,8 @@ final class Habit {
         schedule: WeekdaySet = .everyDay,
         createdAt: Date = .now,
         archivedAt: Date? = nil,
-        sortIndex: Int = 0
+        sortIndex: Int = 0,
+        routine: HabitRoutine = .anytime
     ) {
         self.uuid = uuid
         self.name = name
@@ -62,6 +66,7 @@ final class Habit {
         self.createdAt = createdAt
         self.archivedAt = archivedAt
         self.sortIndex = sortIndex
+        self.routineRaw = routine.rawValue
         self.completions = []
     }
 }
@@ -69,6 +74,11 @@ final class Habit {
 // MARK: - Acceso tipado a los atributos persistidos
 
 extension Habit {
+    var routine: HabitRoutine {
+        get { routineRaw.flatMap(HabitRoutine.init(rawValue:)) ?? .anytime }
+        set { routineRaw = newValue.rawValue }
+    }
+
     /// Color del hábito. Cae en el color por defecto si el dato almacenado no
     /// corresponde a ningún caso conocido (por ejemplo tras una regresión de
     /// versión), en lugar de fallar.
@@ -111,6 +121,7 @@ extension Habit {
         guard dayKey >= createdDayKey,
               let weekday = calendar.weekday(fromDayKey: dayKey)
         else { return false }
+        if let archivedAt, dayKey > calendar.dayKey(from: archivedAt) { return false }
         return isScheduled(onWeekday: weekday)
     }
 }
