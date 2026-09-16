@@ -60,11 +60,17 @@ enum DisarmCode {
     /// mano y los caracteres no cuestan nada.
     static let secretLength = 22
 
-    /// Alfabeto sin los caracteres que se confunden al leerlos (0/O, 1/I/l).
+    /// Alfabeto sin los caracteres que se confunden al leerlos: fuera el cero y
+    /// la O, y fuera el uno, la I y la L.
     ///
     /// El QR lo lee la cámara, pero el secreto acaba impreso en un papel que
-    /// alguien puede tener que teclear si algo falla.
-    private static let alphabet = Array("23456789ABCDEFGHJKLMNPQRSTUVWXYZ")
+    /// alguien puede tener que teclear si algo falla, y en las tipografías de
+    /// palo seco la L mayúscula y el uno se parecen demasiado.
+    ///
+    /// Quedan 31 caracteres, que no es potencia de dos; da igual, porque
+    /// `randomElement()` reparte uniforme sea cual sea el tamaño. Y 22 de ellos
+    /// siguen siendo unos 109 bits.
+    private static let alphabet = Array("23456789ABCDEFGHJKMNPQRSTUVWXYZ")
 
     /// Un secreto nuevo para una pegatina imprimible.
     static func makeSecret() -> String {
