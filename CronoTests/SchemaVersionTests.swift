@@ -6,7 +6,9 @@ import Testing
 
 /// Pruebas del esquema versionado y su plan de migración.
 ///
-/// Includes an on-disk V1 → V2 migration with every model and its relationships.
+/// Incluye una migración en disco de la V1 a la actual con todos los modelos
+/// y sus relaciones: es la única forma de saber que el almacén de alguien que
+/// ya tiene la app instalada sobrevive al cambio.
 @MainActor
 @Suite("Esquema y migración")
 struct SchemaVersionTests {
@@ -18,12 +20,17 @@ struct SchemaVersionTests {
         #expect(CronoSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
     }
 
-    @Test("El plan migra V1 a V2")
-    func planIncludesV2() {
+    @Test("El plan encadena V1, V2 y V3")
+    func planIncludesV3() {
         let names = CronoMigrationPlan.schemas.map { String(describing: $0) }
-        #expect(names == ["CronoSchemaV1", "CronoSchemaV2"])
+        #expect(names == ["CronoSchemaV1", "CronoSchemaV2", "CronoSchemaV3"])
 
-        #expect(CronoMigrationPlan.stages.count == 1)
+        // Una etapa por salto, no una de V1 a V3: un almacén viejo recorre las
+        // dos en orden, y saltarse la intermedia dejaría sin aplicar lo que
+        // añadió.
+        #expect(CronoMigrationPlan.stages.count == 2)
+        #expect(CronoSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
+        #expect(CronoSchemaV3.versionIdentifier == Schema.Version(3, 0, 0))
     }
 
     // MARK: - Los modelos
@@ -40,7 +47,7 @@ struct SchemaVersionTests {
 
     @Test("La lista de modelos y las entidades del esquema no se separan")
     func modelsMatchEntities() {
-        let declared = CronoSchemaV2.models.map { String(describing: $0) }.sorted()
+        let declared = CronoSchemaV3.models.map { String(describing: $0) }.sorted()
         let entities = Schema.crono.entities.map(\.name).sorted()
         #expect(declared == entities)
     }
@@ -56,7 +63,7 @@ struct SchemaVersionTests {
             configurations: configuration
         )
 
-        #expect(container.schema.version == Schema.Version(2, 0, 0))
+        #expect(container.schema.version == Schema.Version(3, 0, 0))
     }
 
     @Test("Los datos van y vuelven a través del esquema versionado")
@@ -120,6 +127,57 @@ struct SchemaVersionTests {
         #expect(habits.first?.routine == .morning)
     }
 
+    @Test("El desarme y las vueltas sobreviven al disco")
+    func disarmSurvivesDisk() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("disarm.store")
+
+        let first = UUID()
+        let second = UUID()
+        let schema = Schema.crono
+        let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+
+        do {
+            let container = try ModelContainer(
+                for: schema, migrationPlan: CronoMigrationPlan.self, configurations: config
+            )
+            let context = container.mainContext
+            let alarm = AlarmItem(
+                minuteOfDay: 7 * 60,
+                schedule: .weekdays,
+                disarmMethod: .scannedCode(value: "8414533043"),
+                disarmHint: "el bote de champú",
+                insistence: .default
+            )
+            context.insert(alarm)
+            // Los identificadores de las vueltas viajan como cadena separada por
+            // comas; que vuelvan como UUID es justo lo que hay que comprobar,
+            // porque de ellos depende poder cancelarlas al desarmar.
+            alarm.followUpAlarmIDs = [first, second]
+            try context.save()
+        }
+
+        // Contenedor nuevo sobre el mismo archivo: así se lee de disco de verdad
+        // y no de lo que quedara en memoria.
+        let reopened = try ModelContainer(
+            for: schema, migrationPlan: CronoMigrationPlan.self, configurations: config
+        )
+        let alarms = try reopened.mainContext.fetch(FetchDescriptor<AlarmItem>())
+        let alarm = try #require(alarms.first)
+
+        #expect(alarm.disarmMethod == DisarmMethod.scannedCode(value: "8414533043"))
+        #expect(alarm.disarmHint == "el bote de champú")
+        #expect(alarm.insistence == InsistencePlan.default)
+        #expect(alarm.followUpAlarmIDs == [first, second])
+        #expect(alarm.requiresDisarm)
+
+        // Y las vueltas salen de la hora y los días de la propia alarma.
+        let minutes = alarm.followUps.map(\.minuteOfDay)
+        #expect(minutes == [7 * 60 + 3, 7 * 60 + 6, 7 * 60 + 9, 7 * 60 + 12])
+    }
+
     private func writeV1Store(at url: URL, habitID: UUID, alarmID: UUID) throws {
         let schema = Schema(versionedSchema: CronoSchemaV1.self)
         let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
@@ -139,6 +197,8 @@ struct SchemaVersionTests {
         context.insert(step)
         task.list = list
         step.parent = task
+        // Una alarma de la V1 no sabe nada de desarme ni de insistencia; la
+        // gracia es comprobar que después de migrar sigue sin pedir nada.
         let alarm = CronoSchemaV1.AlarmItem(minuteOfDay: 420, systemAlarmID: alarmID)
         context.insert(alarm)
         try context.save()
@@ -170,6 +230,15 @@ struct SchemaVersionTests {
         let alarm = try #require(context.fetch(FetchDescriptor<AlarmItem>()).first)
         #expect(alarm.minuteOfDay == 420)
         #expect(alarm.systemAlarmID == alarmID)
+
+        // Lo que añade la V3. Una alarma que ya existía no debe empezar a pedir
+        // cosas sola: quien la puso hace meses espera que siga pudiendo pararla
+        // y ya está.
+        #expect(alarm.disarmMethod == DisarmMethod.stop)
+        #expect(alarm.disarmHint.isEmpty)
+        #expect(alarm.insistence == InsistencePlan.none)
+        #expect(alarm.followUpAlarmIDs.isEmpty)
+        #expect(alarm.requiresDisarm == false)
         habit.routine = .morning
         try context.save()
     }

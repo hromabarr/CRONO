@@ -42,6 +42,41 @@ final class AlarmItem {
     /// sonando por una que el usuario cree apagada.
     var systemAlarmID: UUID?
 
+    // MARK: - Desarme e insistencia
+    //
+    // Las tres propiedades no opcionales llevan su valor por defecto **en la
+    // declaración**, no solo en el `init`. No es estilo: una migración ligera
+    // necesita saber con qué rellenar las filas que ya existen, y sin ese valor
+    // no puede añadir la columna.
+
+    /// `DisarmMethod.rawValue`. `nil` es «solo parar». Usar `disarmMethod`.
+    var disarmMethodRaw: String?
+
+    /// Qué hay que escanear, con las palabras del usuario: «el bote de champú».
+    ///
+    /// Sin esto la función es cruel. A las siete de la mañana, medio dormido, no
+    /// te acuerdas de qué código registraste hace tres semanas, y la alarma
+    /// vuelve cada tres minutos mientras lo piensas.
+    var disarmHint: String = ""
+
+    /// Minutos entre una vuelta y la siguiente. 0 = no insiste.
+    var insistenceIntervalMinutes: Int = 0
+
+    /// Cuántas veces vuelve, sin contar la original.
+    var insistenceRepeats: Int = 0
+
+    /// Los identificadores con los que quedaron registradas las vueltas,
+    /// separados por comas.
+    ///
+    /// Se guardan como cadena y no como `[UUID]` por lo mismo que el color y la
+    /// repetición: el resto de los modelos guarda los tipos con valor como
+    /// primitivos, y así se lee en el depurador sin tener que descifrarlo.
+    ///
+    /// Hay que guardarlos porque desarmar consiste precisamente en cancelarlos,
+    /// y sin ellos el sistema seguiría sonando por una alarma que el usuario
+    /// cree ya resuelta.
+    var followUpAlarmIDsRaw: String = ""
+
     init(
         uuid: UUID = UUID(),
         label: String = "",
@@ -51,7 +86,10 @@ final class AlarmItem {
         snoozeEnabled: Bool = true,
         createdAt: Date = .now,
         sortIndex: Int = 0,
-        systemAlarmID: UUID? = nil
+        systemAlarmID: UUID? = nil,
+        disarmMethod: DisarmMethod = .stop,
+        disarmHint: String = "",
+        insistence: InsistencePlan = .none
     ) {
         self.uuid = uuid
         self.label = label
@@ -62,6 +100,11 @@ final class AlarmItem {
         self.createdAt = createdAt
         self.sortIndex = sortIndex
         self.systemAlarmID = systemAlarmID
+        self.disarmMethodRaw = disarmMethod == .stop ? nil : disarmMethod.rawValue
+        self.disarmHint = disarmHint
+        self.insistenceIntervalMinutes = insistence.intervalMinutes
+        self.insistenceRepeats = insistence.repeats
+        self.followUpAlarmIDsRaw = ""
     }
 }
 
@@ -75,6 +118,57 @@ extension AlarmItem {
 
     var hour: Int { minuteOfDay / 60 }
     var minute: Int { minuteOfDay % 60 }
+
+    /// Qué hay que hacer para que la alarma deje de volver.
+    ///
+    /// Un valor guardado que no se sepa leer cae a `.stop`, no a un método
+    /// imposible de cumplir: ante un dato corrupto, la alarma se comporta como
+    /// una normal en vez de quedarse imposible de desarmar.
+    var disarmMethod: DisarmMethod {
+        get { disarmMethodRaw.flatMap(DisarmMethod.init(rawValue:)) ?? .stop }
+        set { disarmMethodRaw = newValue == .stop ? nil : newValue.rawValue }
+    }
+
+    var insistence: InsistencePlan {
+        get {
+            InsistencePlan(
+                intervalMinutes: insistenceIntervalMinutes,
+                repeats: insistenceRepeats
+            )
+        }
+        set {
+            insistenceIntervalMinutes = newValue.intervalMinutes
+            insistenceRepeats = newValue.repeats
+        }
+    }
+
+    var followUpAlarmIDs: [UUID] {
+        get {
+            followUpAlarmIDsRaw
+                .split(separator: ",")
+                .compactMap { UUID(uuidString: String($0)) }
+        }
+        set {
+            followUpAlarmIDsRaw = newValue.map(\.uuidString).joined(separator: ",")
+        }
+    }
+
+    /// Las vueltas que le tocan a esta alarma según su plan.
+    var followUps: [FollowUpAlarm] {
+        InsistenceCalculator.followUps(
+            after: minuteOfDay,
+            schedule: schedule,
+            plan: insistence
+        )
+    }
+
+    /// Si esta alarma pide algo más que pulsar Parar.
+    ///
+    /// Insistir sin método de desarme sería una alarma que vuelve y no hay forma
+    /// de callar del todo, así que las dos cosas van juntas.
+    var requiresDisarm: Bool {
+        disarmMethod.requiresAction && insistence.isActive
+    }
 }
 
 // MARK: - Presentación
