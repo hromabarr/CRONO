@@ -31,7 +31,9 @@ struct RoutineAndHistoryTests {
         let first = Habit(name: "Agua", createdAt: date(day), sortIndex: 0, routine: .morning)
         let second = Habit(name: "Meditar", createdAt: date(day), sortIndex: 1, routine: .morning)
         let night = Habit(name: "Leer", createdAt: date(day), routine: .evening)
-        let tomorrow = Habit(name: "Correr", schedule: [.tuesday], createdAt: date(day), routine: .morning)
+        // Con sortIndex explícito: sin él se quedaba en 0, empatado con "Agua",
+        // y quién era el siguiente el martes dependía del orden del fetch.
+        let tomorrow = Habit(name: "Correr", schedule: [.tuesday], createdAt: date(day), sortIndex: 2, routine: .morning)
         let archived = Habit(name: "Archivado", createdAt: date(day), archivedAt: date(day), routine: .morning)
         for habit in [second, night, tomorrow, archived, first] { context.insert(habit) }
         try context.save()
@@ -58,6 +60,36 @@ struct RoutineAndHistoryTests {
         #expect(newDay.next?.uuid == first.uuid)
         store.toggleCompletion(for: first, on: day, today: day)
         #expect(RoutineProgress(routine: .morning, habits: all, day: day).next?.uuid == first.uuid)
+    }
+
+    @Test("El orden de la rutina es el mismo aunque los hábitos lleguen barajados")
+    func routineOrderIsTotal() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let day = 20260914
+
+        // Los tres empatan en sortIndex —el valor por defecto es 0, así que
+        // empatar es lo fácil— y dos de ellos también en fecha de creación. Sin
+        // un orden total, cuál sale primero depende del orden del fetch, y la
+        // rutina diría «Siguiente: Correr» una vez y «Siguiente: Agua» la
+        // siguiente sin que el usuario haya tocado nada.
+        let agua = Habit(name: "Agua", createdAt: date(day), routine: .morning)
+        let correr = Habit(name: "Correr", createdAt: date(day), routine: .morning)
+        let meditar = Habit(name: "Meditar", createdAt: date(day), routine: .morning)
+        for habit in [agua, correr, meditar] { context.insert(habit) }
+        try context.save()
+
+        let arrangements: [[Habit]] = [
+            [agua, correr, meditar],
+            [meditar, correr, agua],
+            [correr, agua, meditar]
+        ]
+
+        for arrangement in arrangements {
+            let progress = RoutineProgress(routine: .morning, habits: arrangement, day: day)
+            let names = progress.habits.map(\.name)
+            #expect(names == ["Agua", "Correr", "Meditar"])
+        }
     }
 
     @Test("Crear y editar guarda la rutina sin borrar sus registros")
