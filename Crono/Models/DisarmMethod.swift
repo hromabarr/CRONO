@@ -21,16 +21,24 @@ enum DisarmMethod: Equatable, Hashable, Sendable {
     /// funciona hoy sin cuenta de pago de Apple.
     case arithmetic
 
-    /// Acercar el teléfono a una pegatina NFC concreta.
+    /// Escanear con la cámara un código que vive en otro sitio de la casa.
     ///
-    /// Es el único que de verdad obliga a salir de la cama, porque la pegatina
-    /// está donde uno la pegue —el baño, la cafetera— y hay que ir hasta ella.
+    /// Es el único que de verdad obliga a salir de la cama, porque el código
+    /// está donde uno lo ponga —el baño, la cafetera— y hay que ir hasta él.
     ///
-    /// Guarda el identificador de la pegatina, no su contenido: el UID viene de
-    /// fábrica y no se puede reescribir, mientras que lo que hay escrito dentro
-    /// sí. Se puede clonar con otro aparato, claro; pero el rival aquí es uno
-    /// mismo a las siete de la mañana, no un atacante.
-    case tag(uid: String)
+    /// Sustituye a la pegatina NFC, que necesitaría el entitlement
+    /// `com.apple.developer.nfc.readersession.formats` y con él la cuenta de
+    /// pago de Apple. La cámara solo pide `NSCameraUsageDescription`.
+    ///
+    /// Vale cualquier código que la cámara sepa leer, y eso es a propósito: un
+    /// QR que genera Crono y se imprime, o directamente el código de barras de
+    /// algo que ya viva en ese sitio —el bote de champú, la caja de cereales—.
+    /// Lo segundo no obliga a tener impresora, que es la diferencia entre una
+    /// función usable y una que se queda sin estrenar.
+    ///
+    /// Se puede fotografiar y enseñar desde otra pantalla, claro; pero el rival
+    /// aquí es uno mismo a las siete de la mañana, no un atacante.
+    case scannedCode(value: String)
 
     // MARK: - Persistencia
     //
@@ -42,7 +50,7 @@ enum DisarmMethod: Equatable, Hashable, Sendable {
         switch self {
         case .stop: "stop"
         case .arithmetic: "arithmetic"
-        case let .tag(uid): "tag:\(uid)"
+        case let .scannedCode(value): "code:\(value)"
         }
     }
 
@@ -53,12 +61,12 @@ enum DisarmMethod: Equatable, Hashable, Sendable {
         case "arithmetic":
             self = .arithmetic
         default:
-            guard rawValue.hasPrefix("tag:") else { return nil }
-            let uid = String(rawValue.dropFirst(4))
-            // Una pegatina sin identificador no se puede reconocer, así que
-            // guardarla dejaría una alarma imposible de desarmar.
-            guard !uid.isEmpty else { return nil }
-            self = .tag(uid: uid)
+            guard rawValue.hasPrefix("code:") else { return nil }
+            let value = String(rawValue.dropFirst(5))
+            // Un código vacío no se puede reconocer, así que guardarlo dejaría
+            // una alarma imposible de desarmar.
+            guard !value.isEmpty else { return nil }
+            self = .scannedCode(value: value)
         }
     }
 
@@ -71,7 +79,7 @@ enum DisarmMethod: Equatable, Hashable, Sendable {
         switch self {
         case .stop: "Solo parar"
         case .arithmetic: "Resolver una cuenta"
-        case .tag: "Escanear la pegatina"
+        case .scannedCode: "Escanear un código"
         }
     }
 
@@ -82,8 +90,8 @@ enum DisarmMethod: Equatable, Hashable, Sendable {
             "La alarma se para y no vuelve."
         case .arithmetic:
             "Podrás pararla, pero volverá hasta que resuelvas una cuenta."
-        case .tag:
-            "Podrás pararla, pero volverá hasta que acerques el teléfono a tu pegatina."
+        case .scannedCode:
+            "Podrás pararla, pero volverá hasta que escanees tu código."
         }
     }
 }

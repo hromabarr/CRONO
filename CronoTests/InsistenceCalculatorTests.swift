@@ -119,20 +119,26 @@ struct InsistenceCalculatorTests {
 
     @Test("El método sobrevive al viaje por la base de datos")
     func disarmMethodRoundTrip() {
-        let cases: [DisarmMethod] = [.stop, .arithmetic, .tag(uid: "04A2B3C4D5E6")]
-        // El resultado del init opcional se ata fuera: comparar un opcional con
-        // un miembro implícito dentro de la macro es la ambigüedad que ya costó
-        // una ejecución en las reglas de repetición.
+        let cases: [DisarmMethod] = [.stop, .arithmetic, .scannedCode(value: "8414533043")]
         for method in cases {
             let restored = DisarmMethod(rawValue: method.rawValue)
             #expect(restored == method)
         }
     }
 
-    @Test("Una pegatina sin identificador no se acepta")
-    func tagNeedsUID() {
-        // Guardarla dejaría una alarma imposible de desarmar.
-        #expect(DisarmMethod(rawValue: "tag:") == nil)
+    @Test("Un código con dos puntos dentro sigue viajando entero")
+    func codeWithColonSurvives() {
+        // El contenido de un QR puede ser una URL, y ahí los dos puntos son
+        // parte del dato. Cortar por el primero partiría el código en dos.
+        let method = DisarmMethod.scannedCode(value: "crono://desarmar/ABC:123")
+        let restored = DisarmMethod(rawValue: method.rawValue)
+        #expect(restored == method)
+    }
+
+    @Test("Un código vacío no se acepta")
+    func codeNeedsValue() {
+        // Guardarlo dejaría una alarma imposible de desarmar.
+        #expect(DisarmMethod(rawValue: "code:") == nil)
         #expect(DisarmMethod(rawValue: "loquesea") == nil)
     }
 
@@ -140,6 +146,63 @@ struct InsistenceCalculatorTests {
     func requiresAction() {
         #expect(DisarmMethod.stop.requiresAction == false)
         #expect(DisarmMethod.arithmetic.requiresAction)
-        #expect(DisarmMethod.tag(uid: "04A2").requiresAction)
+        #expect(DisarmMethod.scannedCode(value: "8414533043").requiresAction)
+    }
+
+    // MARK: - El código que desarma
+
+    @Test("El secreto generado no lleva caracteres que se confundan al leerlos")
+    func secretAvoidsAmbiguousCharacters() {
+        let secret = DisarmCode.makeSecret()
+        #expect(secret.count == DisarmCode.secretLength)
+
+        // Acaba impreso en un papel que alguien puede tener que teclear si algo
+        // falla, así que fuera el cero y la O, el uno y la I y la ele.
+        let ambiguous: Set<Character> = ["0", "O", "1", "I", "L"]
+        let hasAmbiguous = secret.contains { ambiguous.contains($0) }
+        #expect(hasAmbiguous == false)
+    }
+
+    @Test("Dos secretos seguidos no son el mismo")
+    func secretsDiffer() {
+        #expect(DisarmCode.makeSecret() != DisarmCode.makeSecret())
+    }
+
+    @Test("Escanear el código guardado desarma")
+    func matchingCodeDisarms() {
+        let method = DisarmMethod.scannedCode(value: "8414533043")
+        #expect(DisarmCode.matches("8414533043", method: method))
+        // Algunos lectores añaden un salto de línea al final.
+        #expect(DisarmCode.matches(" 8414533043\n", method: method))
+    }
+
+    @Test("Escanear otra cosa no desarma")
+    func wrongCodeDoesNotDisarm() {
+        let method = DisarmMethod.scannedCode(value: "8414533043")
+        #expect(DisarmCode.matches("8414533044", method: method) == false)
+        #expect(DisarmCode.matches("", method: method) == false)
+        #expect(DisarmCode.matches("   ", method: method) == false)
+
+        // Sin tocar mayúsculas: normalizar de más acerca códigos distintos, y un
+        // falso positivo aquí desarma la alarma con el bote equivocado.
+        let letters = DisarmMethod.scannedCode(value: "ABC123")
+        #expect(DisarmCode.matches("abc123", method: letters) == false)
+    }
+
+    @Test("La cámara no desarma una alarma que no se desarma con código")
+    func cameraDoesNotDisarmOtherMethods() {
+        // Enfocar cualquier cosa no puede saltarse la cuenta.
+        #expect(DisarmCode.matches("8414533043", method: .arithmetic) == false)
+        #expect(DisarmCode.matches("8414533043", method: .stop) == false)
+    }
+
+    @Test("Un código en blanco no se puede registrar")
+    func blankCodeIsNotUsable() {
+        #expect(DisarmCode.isUsable("8414533043"))
+        #expect(DisarmCode.isUsable("  \n ") == false)
+        #expect(DisarmCode.method(for: "  \n ") == nil)
+
+        let method = DisarmCode.method(for: "  8414533043 ")
+        #expect(method == DisarmMethod.scannedCode(value: "8414533043"))
     }
 }
