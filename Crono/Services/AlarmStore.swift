@@ -43,7 +43,10 @@ final class AlarmStore {
         minuteOfDay: Int,
         label: String = "",
         schedule: WeekdaySet = .everyDay,
-        snoozeEnabled: Bool = true
+        snoozeEnabled: Bool = true,
+        disarmMethod: DisarmMethod = .stop,
+        disarmHint: String = "",
+        insistence: InsistencePlan = .none
     ) async -> AlarmItem? {
         let item = AlarmItem(
             label: label.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -52,6 +55,7 @@ final class AlarmStore {
             snoozeEnabled: snoozeEnabled,
             sortIndex: nextSortIndex()
         )
+        Self.applyDisarm(disarmMethod, hint: disarmHint, insistence: insistence, to: item)
         context.insert(item)
 
         guard save(action: "crear la alarma") else {
@@ -68,12 +72,16 @@ final class AlarmStore {
         minuteOfDay: Int,
         label: String,
         schedule: WeekdaySet,
-        snoozeEnabled: Bool
+        snoozeEnabled: Bool,
+        disarmMethod: DisarmMethod,
+        disarmHint: String,
+        insistence: InsistencePlan
     ) async {
         item.minuteOfDay = max(0, min(minuteOfDay, 24 * 60 - 1))
         item.label = label.trimmingCharacters(in: .whitespacesAndNewlines)
         item.schedule = schedule
         item.snoozeEnabled = snoozeEnabled
+        Self.applyDisarm(disarmMethod, hint: disarmHint, insistence: insistence, to: item)
 
         guard save(action: "guardar la alarma") else {
             context.rollback()
@@ -81,6 +89,30 @@ final class AlarmStore {
         }
 
         await syncWithSystem(item)
+    }
+
+    /// Guarda el desarme y la insistencia como un todo.
+    ///
+    /// Van juntos porque por separado no tienen sentido: insistir sin método de
+    /// desarme sería una alarma que vuelve y no hay forma de callar del todo, y
+    /// un método sin insistencia no pide nada, porque parar ya es el final. Sin
+    /// método se guarda «solo parar» con el plan y la pista vacíos, para que no
+    /// quede un plan huérfano que reaparezca al volver a elegir un método.
+    private static func applyDisarm(
+        _ method: DisarmMethod,
+        hint: String,
+        insistence: InsistencePlan,
+        to item: AlarmItem
+    ) {
+        if method.requiresAction, insistence.isActive {
+            item.disarmMethod = method
+            item.disarmHint = method == .arithmetic ? "" : hint.trimmingCharacters(in: .whitespacesAndNewlines)
+            item.insistence = insistence
+        } else {
+            item.disarmMethod = .stop
+            item.disarmHint = ""
+            item.insistence = .none
+        }
     }
 
     func setEnabled(_ isEnabled: Bool, for item: AlarmItem) async {

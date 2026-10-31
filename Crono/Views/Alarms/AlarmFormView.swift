@@ -25,6 +25,14 @@ struct AlarmFormView: View {
     @State private var snoozeEnabled: Bool
     @State private var showingDeleteConfirmation = false
 
+    @State private var disarmKind: DisarmKind
+    /// El código registrado, tal y como se guardará. `nil` mientras no haya.
+    @State private var pairedCode: String?
+    @State private var disarmHint: String
+    @State private var insistence: InsistencePlan
+    @State private var showingPairing = false
+    @State private var showingPrintable = false
+
     /// Se captura al abrir el formulario, que es «el momento de añadir la
     /// alarma». No se refresca mientras la pantalla sigue abierta: los
     /// formularios son transitorios, y un reloj vivo aquí solo serviría para
@@ -44,6 +52,10 @@ struct AlarmFormView: View {
             _label = State(initialValue: "")
             _schedule = State(initialValue: .everyDay)
             _snoozeEnabled = State(initialValue: true)
+            _disarmKind = State(initialValue: .stop)
+            _pairedCode = State(initialValue: nil)
+            _disarmHint = State(initialValue: "")
+            _insistence = State(initialValue: .default)
 
         case let .edit(alarm):
             let start = calendar.startOfDay(for: .now)
@@ -52,6 +64,22 @@ struct AlarmFormView: View {
             _label = State(initialValue: alarm.label)
             _schedule = State(initialValue: alarm.schedule)
             _snoozeEnabled = State(initialValue: alarm.snoozeEnabled)
+
+            switch alarm.disarmMethod {
+            case .stop:
+                _disarmKind = State(initialValue: .stop)
+                _pairedCode = State(initialValue: nil)
+            case .arithmetic:
+                _disarmKind = State(initialValue: .arithmetic)
+                _pairedCode = State(initialValue: nil)
+            case let .scannedCode(value):
+                _disarmKind = State(initialValue: .code)
+                _pairedCode = State(initialValue: value)
+            }
+            _disarmHint = State(initialValue: alarm.disarmHint)
+            // Una alarma sin insistencia propone el plan por defecto, para que
+            // elegir un método ya deje algo razonable sin tocar los pasos.
+            _insistence = State(initialValue: alarm.insistence.isActive ? alarm.insistence : .default)
         }
     }
 
@@ -62,6 +90,7 @@ struct AlarmFormView: View {
                 sleepSection
                 repeatSection
                 optionsSection
+                disarmSection
                 if editingAlarm != nil { dangerSection }
             }
             .navigationTitle(Text(editingAlarm == nil ? "Nueva alarma" : "Editar alarma"))
@@ -79,6 +108,14 @@ struct AlarmFormView: View {
                 // usuario haya invertido tiempo rellenando nada.
                 if store.authorization == .notDetermined {
                     await store.requestAuthorization()
+                }
+            }
+            .sheet(isPresented: $showingPairing) {
+                DisarmCodePairingView { pairedCode = $0 }
+            }
+            .sheet(isPresented: $showingPrintable) {
+                if let pairedCode {
+                    PrintableCodeView(value: pairedCode, hint: disarmHint)
                 }
             }
             .confirmationDialog(
@@ -151,6 +188,66 @@ struct AlarmFormView: View {
         }
     }
 
+    /// Qué hay que hacer para que la alarma deje de volver.
+    private var disarmSection: some View {
+        Section {
+            Picker("Para que no vuelva", selection: $disarmKind) {
+                ForEach(DisarmKind.allCases, id: \.self) { kind in
+                    Text(kind.label).tag(kind)
+                }
+            }
+
+            if disarmKind == .code { codeRows }
+
+            if disarmKind != .stop {
+                Stepper(value: $insistence.intervalMinutes, in: 1...10) {
+                    LabeledContent("Vuelve cada", value: "\(insistence.intervalMinutes) min")
+                }
+                Stepper(value: $insistence.repeats, in: 1...10) {
+                    LabeledContent("Veces", value: "\(insistence.repeats)")
+                }
+            }
+        } header: {
+            Text("Desarme")
+        } footer: {
+            Text(disarmFooter)
+        }
+    }
+
+    @ViewBuilder
+    private var codeRows: some View {
+        if let pairedCode {
+            LabeledContent("Código") {
+                Text(pairedCode)
+                    .font(.body.monospaced())
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            // La pista es lo que se verá a las siete de la mañana. Sin ella no
+            // te acuerdas de qué registraste hace tres semanas.
+            TextField("Dónde está (p. ej. el bote de champú)", text: $disarmHint)
+                .textInputAutocapitalization(.never)
+            Button("Escanear otro código") { showingPairing = true }
+            Button("Ver como QR para imprimir") { showingPrintable = true }
+        } else {
+            Button("Escanear un código") { showingPairing = true }
+            Button("Crear un QR para imprimir") {
+                pairedCode = DisarmCode.makeSecret()
+                disarmHint = ""
+                showingPrintable = true
+            }
+        }
+    }
+
+    private var disarmFooter: String {
+        guard disarmKind != .stop else { return DisarmMethod.stop.explanation }
+        if disarmKind == .code, pairedCode == nil {
+            return "Registra un código para poder guardar la alarma."
+        }
+        let span = InsistenceCalculator.totalSpanMinutes(insistence)
+        return "\(disarmMethod.explanation) Te insistirá durante \(span) minutos."
+    }
+
     private var dangerSection: some View {
         Section {
             Button("Eliminar alarma", role: .destructive) {
@@ -167,7 +264,7 @@ struct AlarmFormView: View {
         ToolbarItem(placement: .confirmationAction) {
             Button("Guardar") { save() }
                 .fontWeight(.semibold)
-                .disabled(schedule.isEmpty)
+                .disabled(schedule.isEmpty || (disarmKind == .code && pairedCode == nil))
         }
     }
 
@@ -178,12 +275,23 @@ struct AlarmFormView: View {
         return nil
     }
 
+    private var disarmMethod: DisarmMethod {
+        switch disarmKind {
+        case .stop: .stop
+        case .arithmetic: .arithmetic
+        case .code: pairedCode.flatMap(DisarmCode.method(for:)) ?? .stop
+        }
+    }
+
     private func save() {
         let minute = AlarmStore.minuteOfDay(of: time)
         let editing = editingAlarm
         let currentLabel = label
         let currentSchedule = schedule
         let currentSnooze = snoozeEnabled
+        let currentMethod = disarmMethod
+        let currentHint = disarmHint
+        let currentInsistence = insistence
 
         Task {
             if let editing {
@@ -192,14 +300,20 @@ struct AlarmFormView: View {
                     minuteOfDay: minute,
                     label: currentLabel,
                     schedule: currentSchedule,
-                    snoozeEnabled: currentSnooze
+                    snoozeEnabled: currentSnooze,
+                    disarmMethod: currentMethod,
+                    disarmHint: currentHint,
+                    insistence: currentInsistence
                 )
             } else {
                 await store.create(
                     minuteOfDay: minute,
                     label: currentLabel,
                     schedule: currentSchedule,
-                    snoozeEnabled: currentSnooze
+                    snoozeEnabled: currentSnooze,
+                    disarmMethod: currentMethod,
+                    disarmHint: currentHint,
+                    insistence: currentInsistence
                 )
             }
         }
@@ -210,6 +324,25 @@ struct AlarmFormView: View {
         guard let editing = editingAlarm else { return }
         Task { await store.delete(editing) }
         dismiss()
+    }
+}
+
+/// Lo que elige el usuario en el selector de desarme.
+///
+/// No es `DisarmMethod` porque el código no se conoce al elegir: primero se
+/// elige «escanear» y luego se registra qué. Un `DisarmMethod` sin código no
+/// existe, a propósito.
+private enum DisarmKind: Hashable, CaseIterable {
+    case stop
+    case arithmetic
+    case code
+
+    var label: String {
+        switch self {
+        case .stop: DisarmMethod.stop.label
+        case .arithmetic: DisarmMethod.arithmetic.label
+        case .code: DisarmMethod.scannedCode(value: "").label
+        }
     }
 }
 

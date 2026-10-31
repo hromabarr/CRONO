@@ -64,6 +64,11 @@ targets:
         NSAlarmKitUsageDescription: >-
           Crono necesita permiso para poner alarmas y despertarte a la hora que
           programes, incluso con el móvil en silencio.
+        # El desarme por código lee un QR o un código de barras con la cámara.
+        # Sin esta clave, pedir acceso a la cámara cierra la app al momento.
+        NSCameraUsageDescription: >-
+          Crono usa la cámara para leer el código que registras para desarmar
+          una alarma.
         # Solo retrato en iPhone: la app es una lista vertical, el paisaje no aporta.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
