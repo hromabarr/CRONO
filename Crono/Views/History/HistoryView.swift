@@ -57,6 +57,12 @@ private struct HistoryContent: View {
                 monthName: viewModel.monthName
             )
 
+            SectionLabel("Últimas 12 semanas")
+
+            WeeklyRateChart(rates: weeklyRates, tint: .accentColor)
+                .padding(16)
+                .groupedCard()
+
             SectionLabel("Calendario")
 
             calendar
@@ -71,9 +77,27 @@ private struct HistoryContent: View {
             SectionLabel("Racha por hábito")
 
             StreakListCard(entries: viewModel.streaks(for: habits))
+
+            Text("Toca un hábito para ver sus estadísticas.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 9)
+                .padding(.horizontal, 6)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
+    }
+
+    /// El cumplimiento global por semana, sumando todos los hábitos —también
+    /// los archivados, hasta el día en que se archivaron—.
+    private var weeklyRates: [PeriodRate] {
+        let today = viewModel.today
+        var series: [HabitSeries] = []
+        for habit in habits {
+            series.append(HabitSeries(habit: habit, today: today))
+        }
+        return HabitInsights().weeklyRates(for: series, weeks: 12, today: today)
     }
 
     private var calendar: some View {
@@ -128,8 +152,14 @@ private struct StreakListCard: View {
                     Divider().padding(.leading, 42)
                 }
 
-                HabitStreakRow(habit: entry.habit, streak: entry.streak)
-                    .padding(.horizontal, 16)
+                NavigationLink {
+                    HabitDetailView(habit: entry.habit)
+                } label: {
+                    HabitStreakRow(habit: entry.habit, streak: entry.streak)
+                        .padding(.horizontal, 16)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.vertical, 6)

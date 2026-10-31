@@ -9,6 +9,8 @@ struct HabitListView: View {
     @Environment(HabitStore.self) private var store
 
     @State private var editingMode: HabitFormViewModel.Mode?
+    /// El hábito cuyas estadísticas se están viendo.
+    @State private var statsHabit: Habit?
 
     /// Necesario porque las propiedades almacenadas son privadas: el
     /// inicializador sintetizado sería privado y exigiría los dos `@Query`.
@@ -25,6 +27,9 @@ struct HabitListView: View {
                         viewModel: HabitFormViewModel(mode: mode, store: store)
                     )
                 }
+                .navigationDestination(item: $statsHabit) { habit in
+                    HabitDetailView(habit: habit)
+                }
         }
     }
 
@@ -38,7 +43,8 @@ struct HabitListView: View {
                     ActiveHabitsSection(
                         habits: activeHabits,
                         store: store,
-                        onEdit: { editingMode = .edit($0) }
+                        onEdit: { editingMode = .edit($0) },
+                        onShowStats: { statsHabit = $0 }
                     )
                 }
 
@@ -82,6 +88,7 @@ private struct ActiveHabitsSection: View {
     let habits: [Habit]
     let store: HabitStore
     let onEdit: (Habit) -> Void
+    let onShowStats: (Habit) -> Void
 
     var body: some View {
         Section {
@@ -101,6 +108,17 @@ private struct ActiveHabitsSection: View {
 
     private func row(_ habit: Habit) -> some View {
         ActiveHabitRow(habit: habit, onEdit: { onEdit(habit) })
+            .swipeActions(edge: .leading) {
+                Button {
+                    onShowStats(habit)
+                } label: {
+                    Label(text: "Estadísticas", systemImage: "chart.bar")
+                }
+                .tint(.indigo)
+            }
+            .contextMenu {
+                Button("Estadísticas", systemImage: "chart.bar") { onShowStats(habit) }
+            }
             .swipeActions(edge: .trailing) {
                 Button {
                     store.archive(habit)
