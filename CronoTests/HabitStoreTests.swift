@@ -268,4 +268,112 @@ struct HabitStoreTests {
         // Prefiere degradarse a azul antes que fallar al dibujar la fila.
         #expect(habit.color == HabitColor.default)
     }
+
+    // MARK: - Cantidad
+
+    @Test("Sumar en un hábito con cantidad solo lo cumple al llegar al objetivo")
+    func incrementReachesGoal() throws {
+        let (store, context) = try makeStore()
+        let habit = try #require(store.createHabit(name: "Agua", targetCount: 3, unit: "vasos"))
+        let day = habit.createdDayKey
+
+        store.advance(habit, on: day, today: day)
+        store.advance(habit, on: day, today: day)
+        #expect(habit.count(on: day) == 2)
+        #expect(!habit.isCompleted(on: day))
+        #expect(habit.progressText(on: day) == "2 de 3 vasos")
+        // Una sola fila por día aunque se sume varias veces.
+        #expect(try completionCount(in: context) == 1)
+
+        store.advance(habit, on: day, today: day)
+        #expect(habit.isCompleted(on: day))
+        #expect(habit.completedDayKeys == [day])
+
+        // Pasarse del objetivo vale: nueve vasos de ocho siguen siendo un día
+        // cumplido.
+        store.advance(habit, on: day, today: day)
+        #expect(habit.count(on: day) == 4)
+        #expect(habit.isCompleted(on: day))
+    }
+
+    @Test("Restar hasta cero borra el registro")
+    func decrementToZeroDeletes() throws {
+        let (store, context) = try makeStore()
+        let habit = try #require(store.createHabit(name: "Páginas", targetCount: 10))
+        let day = habit.createdDayKey
+
+        store.increment(habit, on: day, today: day)
+        store.increment(habit, on: day, today: day)
+        store.decrement(habit, on: day, today: day)
+        #expect(habit.count(on: day) == 1)
+
+        store.decrement(habit, on: day, today: day)
+        #expect(habit.count(on: day) == 0)
+        #expect(try completionCount(in: context) == 0)
+
+        // Restar sin nada apuntado no hace nada ni falla.
+        store.decrement(habit, on: day, today: day)
+        #expect(store.failure == nil)
+    }
+
+    @Test("Marcar un hábito con cantidad lo lleva al objetivo, y desmarcar a cero")
+    func toggleQuantityHabit() throws {
+        let (store, _) = try makeStore()
+        let habit = try #require(store.createHabit(name: "Agua", targetCount: 8))
+        let day = habit.createdDayKey
+
+        store.increment(habit, on: day, today: day)
+        store.toggleCompletion(for: habit, on: day, today: day)
+        #expect(habit.count(on: day) == 8)
+        #expect(habit.isCompleted(on: day))
+
+        store.toggleCompletion(for: habit, on: day, today: day)
+        #expect(habit.count(on: day) == 0)
+    }
+
+    @Test("Subir el objetivo vuelve a evaluar los días ya apuntados")
+    func raisingGoalReevaluates() throws {
+        let (store, _) = try makeStore()
+        let habit = try #require(store.createHabit(name: "Leer"))
+        let day = habit.createdDayKey
+        store.toggleCompletion(for: habit, on: day, today: day)
+        #expect(habit.isCompleted(on: day))
+
+        store.update(
+            habit,
+            name: habit.name,
+            notes: habit.notes,
+            color: habit.color,
+            schedule: habit.schedule,
+            targetCount: 5,
+            unit: "páginas"
+        )
+
+        #expect(habit.hasQuantityGoal)
+        #expect(!habit.isCompleted(on: day))
+        #expect(habit.count(on: day) == 1)
+    }
+
+    @Test("El objetivo se queda entre 1 y el tope")
+    func goalIsClamped() throws {
+        let (store, _) = try makeStore()
+        let low = try #require(store.createHabit(name: "Cero", targetCount: 0))
+        let high = try #require(store.createHabit(name: "Mucho", targetCount: 5000))
+
+        #expect(low.targetCount == 1)
+        #expect(high.targetCount == Habit.maxTarget)
+    }
+
+    @Test("No se suma en días futuros")
+    func noIncrementInFuture() throws {
+        let (store, _) = try makeStore()
+        let habit = try #require(store.createHabit(name: "Agua", targetCount: 8))
+        let today = habit.createdDayKey
+        let tomorrow = try #require(calendar.dayKey(today, offsetByDays: 1))
+
+        store.increment(habit, on: tomorrow, today: today)
+
+        #expect(habit.count(on: tomorrow) == 0)
+        #expect(store.failure != nil)
+    }
 }

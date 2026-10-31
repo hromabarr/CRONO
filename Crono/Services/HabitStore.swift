@@ -50,7 +50,9 @@ final class HabitStore {
         notes: String = "",
         color: HabitColor = .default,
         schedule: WeekdaySet = .everyDay,
-        routine: HabitRoutine = .anytime
+        routine: HabitRoutine = .anytime,
+        targetCount: Int = 1,
+        unit: String = ""
     ) -> Habit? {
         let habit = Habit(
             name: name.trimmedForStorage,
@@ -58,7 +60,9 @@ final class HabitStore {
             color: color,
             schedule: schedule,
             sortIndex: nextSortIndex(),
-            routine: routine
+            routine: routine,
+            targetCount: targetCount,
+            unit: unit.trimmedForStorage
         )
         context.insert(habit)
 
@@ -77,13 +81,20 @@ final class HabitStore {
         notes: String,
         color: HabitColor,
         schedule: WeekdaySet,
-        routine: HabitRoutine? = nil
+        routine: HabitRoutine? = nil,
+        targetCount: Int? = nil,
+        unit: String? = nil
     ) {
         habit.name = name.trimmedForStorage
         habit.notes = notes.trimmedForStorage
         habit.color = color
         habit.schedule = schedule
         if let routine { habit.routine = routine }
+        // Cambiar el objetivo no reescribe el pasado: los días ya registrados
+        // se vuelven a evaluar contra el objetivo nuevo, igual que una racha se
+        // recalcula al cambiar los días programados.
+        if let targetCount { habit.targetCount = Habit.clampedTarget(targetCount) }
+        if let unit { habit.unit = unit.trimmedForStorage }
 
         if !save(action: "guardar los cambios") { context.rollback() }
     }
@@ -131,46 +142,116 @@ final class HabitStore {
     ///
     /// Aquí vive la unicidad de (hábito, día): `#Unique` no puede expresarse
     /// sobre una relación, así que se garantiza buscando antes de insertar.
+    ///
+    /// En un hábito con cantidad, marcar es llegar al objetivo de golpe y
+    /// desmarcar es volver a cero: es lo que piden la rutina y el editor de
+    /// días, que tratan cada hábito como un paso hecho o por hacer.
     func toggleCompletion(for habit: Habit, on dayKey: DayKey, today: DayKey? = nil) {
+        let existing = habit.completion(on: dayKey)
+        let completing = !habit.isCompleted(on: dayKey)
+        guard canRecord(habit, on: dayKey, today: today, adding: completing, action: "marcar el hábito") else {
+            return
+        }
+
+        if !completing, let existing {
+            context.delete(existing)
+        } else if let existing {
+            existing.count = habit.targetCount
+        } else {
+            insertCompletion(for: habit, on: dayKey, count: habit.targetCount)
+        }
+
+        if !save(action: "guardar el registro") { context.rollback() }
+    }
+
+    /// Lo que hace tocar un hábito: sumar uno si se mide en cantidad, marcar o
+    /// desmarcar si es de sí o no.
+    func advance(_ habit: Habit, on dayKey: DayKey, today: DayKey? = nil) {
+        if habit.hasQuantityGoal {
+            increment(habit, on: dayKey, today: today)
+        } else {
+            toggleCompletion(for: habit, on: dayKey, today: today)
+        }
+    }
+
+    /// Suma uno a lo hecho ese día. Se puede pasar del objetivo, hasta
+    /// `Habit.maxDailyCount`.
+    func increment(_ habit: Habit, on dayKey: DayKey, today: DayKey? = nil) {
+        guard canRecord(habit, on: dayKey, today: today, adding: true, action: "sumar al hábito") else {
+            return
+        }
+
+        if let existing = habit.completion(on: dayKey) {
+            guard existing.count < Habit.maxDailyCount else { return }
+            existing.count += 1
+        } else {
+            insertCompletion(for: habit, on: dayKey, count: 1)
+        }
+
+        if !save(action: "guardar el registro") { context.rollback() }
+    }
+
+    /// Resta uno a lo hecho ese día. Al llegar a cero se borra el registro.
+    func decrement(_ habit: Habit, on dayKey: DayKey, today: DayKey? = nil) {
+        guard let existing = habit.completion(on: dayKey) else { return }
+        guard canRecord(habit, on: dayKey, today: today, adding: false, action: "restar al hábito") else {
+            return
+        }
+
+        if existing.count <= 1 {
+            context.delete(existing)
+        } else {
+            existing.count -= 1
+        }
+
+        if !save(action: "guardar el registro") { context.rollback() }
+    }
+
+    /// Las reglas de qué días se pueden tocar, compartidas por marcar, sumar y
+    /// restar.
+    ///
+    /// `adding` distingue apuntar de quitar: quitar un registro de un día en que
+    /// el hábito ya estaba archivado se permite, porque corrige un error; añadir
+    /// uno, no.
+    private func canRecord(
+        _ habit: Habit,
+        on dayKey: DayKey,
+        today: DayKey?,
+        adding: Bool,
+        action: String
+    ) -> Bool {
         let referenceToday = today ?? Date.now.dayKey
         guard calendar.date(fromDayKey: dayKey) != nil else {
-            failure = StoreFailure(action: "marcar el hábito", reason: "La fecha no es válida.")
-            return
+            failure = StoreFailure(action: action, reason: "La fecha no es válida.")
+            return false
         }
 
         // Marcar el futuro no significa nada: un hábito no puede cumplirse antes
         // de que llegue su día.
         guard dayKey <= referenceToday else {
-            failure = StoreFailure(
-                action: "marcar el hábito",
-                reason: "Ese día aún no ha llegado."
-            )
-            return
+            failure = StoreFailure(action: action, reason: "Ese día aún no ha llegado.")
+            return false
         }
 
         guard dayKey >= habit.createdDayKey else {
-            failure = StoreFailure(
-                action: "marcar el hábito",
-                reason: "Es anterior a la creación del hábito."
-            )
-            return
+            failure = StoreFailure(action: action, reason: "Es anterior a la creación del hábito.")
+            return false
         }
 
-        if let existing = habit.completion(on: dayKey) {
-            context.delete(existing)
-        } else {
-            if let archivedAt = habit.archivedAt, dayKey > calendar.dayKey(from: archivedAt) {
-                failure = StoreFailure(action: "marcar el hábito", reason: "El hábito ya estaba archivado ese día.")
-                return
-            }
-            let completion = HabitCompletion(dayKey: dayKey)
-            // Insertar antes de enlazar: así SwiftData ya gestiona el objeto
-            // cuando se establece la relación inversa.
-            context.insert(completion)
-            completion.habit = habit
+        if adding, let archivedAt = habit.archivedAt, dayKey > calendar.dayKey(from: archivedAt) {
+            failure = StoreFailure(action: action, reason: "El hábito ya estaba archivado ese día.")
+            return false
         }
 
-        if !save(action: "guardar el registro") { context.rollback() }
+        return true
+    }
+
+    private func insertCompletion(for habit: Habit, on dayKey: DayKey, count: Int) {
+        let completion = HabitCompletion(dayKey: dayKey, count: count)
+        // Insertar antes de enlazar: así SwiftData ya gestiona el objeto
+        // cuando se establece la relación inversa.
+        context.insert(completion)
+        completion.habit = habit
     }
 
     // MARK: - Consultas

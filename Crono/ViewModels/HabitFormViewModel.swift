@@ -33,6 +33,8 @@ final class HabitFormViewModel {
     var color: HabitColor
     var schedule: WeekdaySet
     var routine: HabitRoutine
+    var targetCount: Int
+    var unit: String
 
     init(mode: Mode, store: HabitStore, routine: HabitRoutine = .anytime) {
         self.mode = mode
@@ -45,12 +47,16 @@ final class HabitFormViewModel {
             self.color = .default
             self.schedule = .everyDay
             self.routine = routine
+            self.targetCount = 1
+            self.unit = ""
         case let .edit(habit):
             self.name = habit.name
             self.notes = habit.notes
             self.color = habit.color
             self.schedule = habit.schedule
             self.routine = habit.routine
+            self.targetCount = habit.targetCount
+            self.unit = habit.unit
         }
     }
 
@@ -132,7 +138,9 @@ final class HabitFormViewModel {
                 notes: notes,
                 color: color,
                 schedule: schedule,
-                routine: routine
+                routine: routine,
+                targetCount: targetCount,
+                unit: targetCount > 1 ? unit : ""
             ) != nil
 
         case let .edit(habit):
@@ -142,7 +150,9 @@ final class HabitFormViewModel {
                 notes: notes,
                 color: color,
                 schedule: schedule,
-                routine: routine
+                routine: routine,
+                targetCount: targetCount,
+                unit: targetCount > 1 ? unit : ""
             )
             return store.failure == nil
         }

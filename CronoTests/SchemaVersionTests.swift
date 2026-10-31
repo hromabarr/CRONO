@@ -20,17 +20,17 @@ struct SchemaVersionTests {
         #expect(CronoSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
     }
 
-    @Test("El plan encadena V1, V2 y V3")
-    func planIncludesV3() {
+    @Test("El plan encadena V1, V2, V3 y V4")
+    func planIncludesV4() {
         let names = CronoMigrationPlan.schemas.map { String(describing: $0) }
-        #expect(names == ["CronoSchemaV1", "CronoSchemaV2", "CronoSchemaV3"])
+        #expect(names == ["CronoSchemaV1", "CronoSchemaV2", "CronoSchemaV3", "CronoSchemaV4"])
 
-        // Una etapa por salto, no una de V1 a V3: un almacén viejo recorre las
-        // dos en orden, y saltarse la intermedia dejaría sin aplicar lo que
-        // añadió.
-        #expect(CronoMigrationPlan.stages.count == 2)
+        // Una etapa por salto, no una de V1 a V4: un almacén viejo recorre todas
+        // en orden, y saltarse una intermedia dejaría sin aplicar lo que añadió.
+        #expect(CronoMigrationPlan.stages.count == 3)
         #expect(CronoSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
         #expect(CronoSchemaV3.versionIdentifier == Schema.Version(3, 0, 0))
+        #expect(CronoSchemaV4.versionIdentifier == Schema.Version(4, 0, 0))
     }
 
     // MARK: - Los modelos
@@ -47,7 +47,7 @@ struct SchemaVersionTests {
 
     @Test("La lista de modelos y las entidades del esquema no se separan")
     func modelsMatchEntities() {
-        let declared = CronoSchemaV3.models.map { String(describing: $0) }.sorted()
+        let declared = CronoSchemaV4.models.map { String(describing: $0) }.sorted()
         let entities = Schema.crono.entities.map(\.name).sorted()
         #expect(declared == entities)
     }
@@ -63,7 +63,7 @@ struct SchemaVersionTests {
             configurations: configuration
         )
 
-        #expect(container.schema.version == Schema.Version(3, 0, 0))
+        #expect(container.schema.version == Schema.Version(4, 0, 0))
     }
 
     @Test("Los datos van y vuelven a través del esquema versionado")
@@ -125,6 +125,56 @@ struct SchemaVersionTests {
         let reopened = try ModelContainer(for: schema, migrationPlan: CronoMigrationPlan.self, configurations: config)
         let habits = try reopened.mainContext.fetch(FetchDescriptor<Habit>())
         #expect(habits.first?.routine == .morning)
+    }
+
+    @Test("Migrar de la V3 a la V4 conserva el desarme y estrena objetivo y sonido")
+    func migrationFromV3() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("v3.store")
+
+        // Un almacén escrito con las clases congeladas de la V3: es lo que
+        // tiene en el móvil quien instaló la versión anterior.
+        do {
+            let schema = Schema(versionedSchema: CronoSchemaV3.self)
+            let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+            let container = try ModelContainer(for: schema, configurations: config)
+            let context = container.mainContext
+            let habit = CronoSchemaV3.Habit(name: "Agua", routine: .morning)
+            let completion = CronoSchemaV3.HabitCompletion(dayKey: 20260914)
+            context.insert(habit)
+            context.insert(completion)
+            completion.habit = habit
+            let alarm = CronoSchemaV3.AlarmItem(minuteOfDay: 7 * 60)
+            alarm.disarmMethodRaw = DisarmMethod.scannedCode(value: "CRONO").rawValue
+            alarm.disarmHint = "el baño"
+            alarm.insistenceIntervalMinutes = 1
+            alarm.insistenceRepeats = 60
+            context.insert(alarm)
+            try context.save()
+        }
+
+        let schema = Schema.crono
+        let config = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, migrationPlan: CronoMigrationPlan.self, configurations: config)
+        let context = container.mainContext
+
+        let habit = try #require(context.fetch(FetchDescriptor<Habit>()).first)
+        #expect(habit.routine == .morning)
+        // Lo que añade la V4: un hábito de antes sigue siendo de sí o no, y su
+        // registro sigue contando como hecho.
+        #expect(habit.targetCount == 1)
+        #expect(habit.unit.isEmpty)
+        #expect(habit.completions.first?.count == 1)
+        #expect(habit.isCompleted(on: 20260914))
+
+        let alarm = try #require(context.fetch(FetchDescriptor<AlarmItem>()).first)
+        #expect(alarm.disarmMethod == DisarmMethod.scannedCode(value: "CRONO"))
+        #expect(alarm.disarmHint == "el baño")
+        #expect(alarm.insistence == InsistencePlan.untilDisarmed)
+        #expect(alarm.soundRaw.isEmpty)
+        #expect(alarm.followUpSoundRaw.isEmpty)
     }
 
     @Test("El desarme y las vueltas sobreviven al disco")
@@ -239,6 +289,11 @@ struct SchemaVersionTests {
         #expect(alarm.insistence == InsistencePlan.none)
         #expect(alarm.followUpAlarmIDs.isEmpty)
         #expect(alarm.requiresDisarm == false)
+
+        // Y lo de la V4, después de recorrer las tres etapas.
+        #expect(habit.targetCount == 1)
+        #expect(habit.completions.first?.count == 1)
+        #expect(alarm.soundRaw.isEmpty)
         habit.routine = .morning
         try context.save()
     }

@@ -46,7 +46,8 @@ struct TodayHabitsCard: View {
             isCompleted: viewModel.isCompletedToday(habit),
             accessibilityLabel: viewModel.accessibilityLabel(for: habit),
             accessibilityHint: viewModel.accessibilityHint(for: habit),
-            onToggle: { onToggle(habit) }
+            onToggle: { onToggle(habit) },
+            day: viewModel.today
         )
         .padding(.horizontal, 16)
     }

@@ -137,7 +137,7 @@ struct TodayView: View {
     /// Las escrituras las piden las vistas a los almacenes, que siguen siendo el
     /// único punto de mutación. Los ViewModels solo derivan.
     private func toggleHabit(_ habit: Habit) {
-        store.toggleCompletion(for: habit, on: viewModel.today, today: viewModel.today)
+        store.advance(habit, on: viewModel.today, today: viewModel.today)
     }
 
     private func toggleReminder(_ reminder: Reminder) {

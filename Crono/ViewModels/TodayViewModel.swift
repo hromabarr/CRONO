@@ -139,11 +139,15 @@ final class TodayViewModel {
     /// Etiqueta de accesibilidad de la fila: estado y acción, porque el relleno
     /// del círculo no se transmite por sí solo a VoiceOver.
     func accessibilityLabel(for habit: Habit) -> String {
+        if habit.hasQuantityGoal {
+            return "\(habit.name), \(habit.progressText(on: today))"
+        }
         let state = isCompletedToday(habit) ? "completado" : "sin completar"
         return "\(habit.name), \(state)"
     }
 
     func accessibilityHint(for habit: Habit) -> String {
-        isCompletedToday(habit) ? "Toca para desmarcar" : "Toca para marcar como completado"
+        if habit.hasQuantityGoal { return "Toca para sumar uno" }
+        return isCompletedToday(habit) ? "Toca para desmarcar" : "Toca para marcar como completado"
     }
 }

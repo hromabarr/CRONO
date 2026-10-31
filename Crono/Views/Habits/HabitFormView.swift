@@ -24,6 +24,7 @@ struct HabitFormView: View {
             Form {
                 nameSection
                 routineSection
+                goalSection
                 colorSection
                 scheduleSection
                 if viewModel.isEditing { dangerZone }
@@ -77,6 +78,37 @@ struct HabitFormView: View {
         } header: {
             Text("Nombre")
         }
+    }
+
+    /// Cuánto hay que hacer al día. Con 1 es un hábito de sí o no y la unidad
+    /// no hace falta, así que se esconde.
+    private var goalSection: some View {
+        Section {
+            Stepper(value: $viewModel.targetCount, in: 1...Habit.maxTarget) {
+                LabeledContent("Cada día", value: goalText)
+            }
+
+            if viewModel.targetCount > 1 {
+                TextField("Unidad (vasos, páginas, min…)", text: $viewModel.unit)
+                    .textInputAutocapitalization(.never)
+            }
+        } header: {
+            Text("Objetivo")
+        } footer: {
+            Text(goalFooter)
+        }
+    }
+
+    private var goalText: String {
+        guard viewModel.targetCount > 1 else { return "Hecho o no" }
+        let unit = viewModel.unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        return unit.isEmpty ? "\(viewModel.targetCount)" : "\(viewModel.targetCount) \(unit)"
+    }
+
+    private var goalFooter: String {
+        viewModel.targetCount > 1
+            ? "Cada toque suma uno. El día cuenta como cumplido al llegar al objetivo."
+            : "Sube el número para medir cantidades, como vasos de agua o páginas."
     }
 
     private var routineSection: some View {

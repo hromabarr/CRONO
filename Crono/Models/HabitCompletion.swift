@@ -1,12 +1,12 @@
 import Foundation
 import SwiftData
 
-/// Marca de que un hábito se completó en un día concreto.
+/// Lo que se hizo de un hábito en un día concreto.
 ///
-/// No existe un campo `isCompleted`: la existencia de la fila *es* la compleción.
-/// Desmarcar borra la fila. Esto evita el estado ambiguo de tener filas con
-/// `false` mezcladas con la ausencia de fila, que son lo mismo pero se consultan
-/// de forma distinta.
+/// No existe un campo `isCompleted`: un hábito de sí o no está hecho si la fila
+/// existe, y uno con cantidad, si `count` llega a su objetivo. Desmarcar o bajar
+/// a cero borra la fila. Así nunca hay filas «vacías» mezcladas con la ausencia
+/// de fila, que serían lo mismo pero se consultarían de forma distinta.
 @Model
 final class HabitCompletion {
     /// La vista de historial pide "todas las compleciones del mes visible", es
@@ -32,15 +32,21 @@ final class HabitCompletion {
     /// borrado del hábito arrastra sus registros en cascada.
     var habit: Habit?
 
+    /// Cuánto se hizo ese día. Siempre 1 en los hábitos de sí o no, y en los
+    /// registros anteriores a la V4, que eran todos de ese tipo.
+    var count: Int = 1
+
     init(
         uuid: UUID = UUID(),
         dayKey: DayKey,
         completedAt: Date = .now,
-        habit: Habit? = nil
+        habit: Habit? = nil,
+        count: Int = 1
     ) {
         self.uuid = uuid
         self.dayKey = dayKey
         self.completedAt = completedAt
         self.habit = habit
+        self.count = count
     }
 }

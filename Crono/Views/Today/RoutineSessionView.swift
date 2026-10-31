@@ -75,7 +75,12 @@ struct RoutineSessionView: View {
                 if !habit.notes.isEmpty {
                     Text(habit.notes).foregroundStyle(.secondary)
                 }
-                Button("Marcar y continuar") { toggle(habit) }
+                if habit.hasQuantityGoal {
+                    Text(habit.progressText(on: day))
+                        .font(.headline)
+                        .monospacedDigit()
+                }
+                Button(habit.hasQuantityGoal ? "Sumar uno" : "Marcar y continuar") { toggle(habit) }
                     .buttonStyle(.borderedProminent)
                     .frame(minHeight: 44)
             }
@@ -85,8 +90,11 @@ struct RoutineSessionView: View {
         }
     }
 
+    /// Sumar en los de cantidad: «Marcar y continuar» no pasa al siguiente
+    /// paso hasta llegar al objetivo, porque `RoutineProgress.next` solo salta
+    /// los cumplidos.
     private func toggle(_ habit: Habit) {
-        store.toggleCompletion(for: habit, on: day)
+        store.advance(habit, on: day)
     }
 }
 

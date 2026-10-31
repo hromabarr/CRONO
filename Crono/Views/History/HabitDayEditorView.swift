@@ -33,7 +33,7 @@ struct HabitDayEditorView: View {
                     Section {
                         ForEach(habits) { habit in
                             HabitRecordRow(habit: habit, day: day) {
-                                store.toggleCompletion(for: habit, on: day)
+                                store.advance(habit, on: day)
                             }
                         }
                     } header: {

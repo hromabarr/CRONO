@@ -77,6 +77,14 @@ final class AlarmItem {
     /// cree ya resuelta.
     var followUpAlarmIDsRaw: String = ""
 
+    // MARK: - Sonido (V4)
+
+    /// `AlarmSound.rawValue` de la alarma principal. `""` es el del sistema.
+    var soundRaw: String = ""
+
+    /// `AlarmSound.rawValue` de las vueltas. `""` es el del sistema.
+    var followUpSoundRaw: String = ""
+
     init(
         uuid: UUID = UUID(),
         label: String = "",
