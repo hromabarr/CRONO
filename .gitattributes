@@ -15,4 +15,5 @@
 *.html  text eol=lf
 
 *.png binary
+*.wav binary
 *.ipa binary

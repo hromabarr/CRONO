@@ -244,4 +244,46 @@ struct AlarmStoreTests {
         #expect(alarm.disarmMethod == .arithmetic)
         #expect(alarm.disarmHint == "")
     }
+
+    // MARK: - Sonido
+
+    @Test("La alarma guarda su sonido y el de las vueltas")
+    func soundsArePersisted() async throws {
+        let (store, _) = try makeStore()
+        let alarm = try #require(
+            await store.create(
+                minuteOfDay: 7 * 60,
+                disarmMethod: .arithmetic,
+                insistence: .default,
+                sound: .bell,
+                followUpSound: .siren
+            )
+        )
+        #expect(alarm.sound == .bell)
+        #expect(alarm.followUpSound == .siren)
+        #expect(alarm.soundRaw == "campana")
+
+        await store.update(
+            alarm,
+            minuteOfDay: alarm.minuteOfDay,
+            label: alarm.label,
+            schedule: alarm.schedule,
+            snoozeEnabled: alarm.snoozeEnabled,
+            disarmMethod: alarm.disarmMethod,
+            disarmHint: alarm.disarmHint,
+            insistence: alarm.insistence,
+            sound: .beep
+        )
+        #expect(alarm.sound == .beep)
+        // Lo que no se pasa no se toca.
+        #expect(alarm.followUpSound == .siren)
+    }
+
+    @Test("Un sonido que no se conoce suena con el del sistema")
+    func unknownSoundFallsBack() {
+        #expect(AlarmSound(stored: "") == .system)
+        #expect(AlarmSound(stored: "trompeta") == .system)
+        #expect(AlarmSound.system.fileName == nil)
+        #expect(AlarmSound.siren.fileName == "sirena.wav")
+    }
 }

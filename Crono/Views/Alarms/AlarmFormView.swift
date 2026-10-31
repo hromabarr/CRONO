@@ -32,6 +32,8 @@ struct AlarmFormView: View {
     @State private var insistence: InsistencePlan
     @State private var showingPairing = false
     @State private var showingPrintable = false
+    @State private var sound: AlarmSound
+    @State private var followUpSound: AlarmSound
 
     /// Se captura al abrir el formulario, que es «el momento de añadir la
     /// alarma». No se refresca mientras la pantalla sigue abierta: los
@@ -56,6 +58,8 @@ struct AlarmFormView: View {
             _pairedCode = State(initialValue: nil)
             _disarmHint = State(initialValue: "")
             _insistence = State(initialValue: .untilDisarmed)
+            _sound = State(initialValue: .system)
+            _followUpSound = State(initialValue: AlarmSound.defaultFollowUp)
 
         case let .edit(alarm):
             let start = calendar.startOfDay(for: .now)
@@ -80,6 +84,10 @@ struct AlarmFormView: View {
             // Una alarma sin insistencia propone «hasta que la desarme», para
             // que elegir un método ya deje algo razonable sin tocar nada más.
             _insistence = State(initialValue: alarm.insistence.isActive ? alarm.insistence : .untilDisarmed)
+            _sound = State(initialValue: alarm.sound)
+            // Una alarma que aún no insistía propone el de las vueltas por
+            // defecto; una que ya insistía conserva el suyo.
+            _followUpSound = State(initialValue: alarm.requiresDisarm ? alarm.followUpSound : AlarmSound.defaultFollowUp)
         }
     }
 
@@ -182,9 +190,14 @@ struct AlarmFormView: View {
             TextField("Etiqueta", text: $label)
                 .textInputAutocapitalization(.sentences)
 
+            SoundPicker(title: "Sonido", selection: $sound)
+
             Toggle("Posponer", isOn: $snoozeEnabled)
+                .disabled(disarmKind != .stop)
         } footer: {
-            Text("Con Posponer activado, la alerta ofrece un botón para volver a sonar más tarde.")
+            Text(disarmKind == .stop
+                ? "Con Posponer activado, la alerta ofrece un botón para volver a sonar más tarde."
+                : "Con desarme no se puede posponer: en su lugar, la alerta ofrece «Desarmar», que abre Crono en la pantalla de desarme.")
         }
     }
 
@@ -200,6 +213,8 @@ struct AlarmFormView: View {
             if disarmKind == .code { codeRows }
 
             if disarmKind != .stop {
+                SoundPicker(title: "Sonido de las vueltas", selection: $followUpSound)
+
                 Toggle("Hasta que la desarme", isOn: untilDisarmed)
 
                 if !insistence.isUntilDisarmed {
@@ -314,6 +329,8 @@ struct AlarmFormView: View {
         let currentMethod = disarmMethod
         let currentHint = disarmHint
         let currentInsistence = insistence
+        let currentSound = sound
+        let currentFollowUpSound = followUpSound
 
         Task {
             if let editing {
@@ -325,7 +342,9 @@ struct AlarmFormView: View {
                     snoozeEnabled: currentSnooze,
                     disarmMethod: currentMethod,
                     disarmHint: currentHint,
-                    insistence: currentInsistence
+                    insistence: currentInsistence,
+                    sound: currentSound,
+                    followUpSound: currentFollowUpSound
                 )
             } else {
                 await store.create(
@@ -335,7 +354,9 @@ struct AlarmFormView: View {
                     snoozeEnabled: currentSnooze,
                     disarmMethod: currentMethod,
                     disarmHint: currentHint,
-                    insistence: currentInsistence
+                    insistence: currentInsistence,
+                    sound: currentSound,
+                    followUpSound: currentFollowUpSound
                 )
             }
         }

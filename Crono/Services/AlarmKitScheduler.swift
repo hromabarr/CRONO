@@ -1,5 +1,7 @@
 #if canImport(AlarmKit)
+import ActivityKit
 import AlarmKit
+import AppIntents
 import Foundation
 import SwiftUI
 
@@ -48,11 +50,14 @@ final class AlarmKitScheduler: AlarmScheduling {
             Alarm.Schedule.Relative(time: time, repeats: recurrence)
         )
 
+        // Una alarma con desarme no se pospone: posponer es justo lo
+        // contrario, y el hueco del botón lo ocupa «Desarmar».
         return try await register(
             item,
             schedule: schedule,
             title: item.displayLabel,
-            allowsSnooze: item.snoozeEnabled
+            allowsSnooze: item.snoozeEnabled && !item.requiresDisarm,
+            sound: item.sound
         )
     }
 
@@ -70,7 +75,8 @@ final class AlarmKitScheduler: AlarmScheduling {
             item,
             schedule: .fixed(date),
             title: title,
-            allowsSnooze: false
+            allowsSnooze: false,
+            sound: item.followUpSound
         )
     }
 
@@ -78,9 +84,30 @@ final class AlarmKitScheduler: AlarmScheduling {
         _ item: AlarmItem,
         schedule: Alarm.Schedule,
         title: String,
-        allowsSnooze: Bool
+        allowsSnooze: Bool,
+        sound: AlarmSound
     ) async throws -> UUID {
         let id = UUID()
+
+        // El segundo botón es «Desarmar» si la alarma lo pide, «Posponer» si
+        // no lo pide y está activado, o ninguno.
+        let offersDisarm = item.requiresDisarm
+        let secondaryButton: AlarmButton?
+        let secondaryBehavior: AlarmPresentation.Alert.SecondaryButtonBehavior?
+        let secondaryIntent: (any LiveActivityIntent)?
+        if offersDisarm {
+            secondaryButton = AlarmButton(text: "Desarmar", textColor: .white, systemImageName: "qrcode.viewfinder")
+            secondaryBehavior = .custom
+            secondaryIntent = OpenDisarmIntent(alarmID: id)
+        } else if allowsSnooze {
+            secondaryButton = AlarmButton(text: "Posponer", textColor: .white, systemImageName: "zzz")
+            secondaryBehavior = .countdown
+            secondaryIntent = nil
+        } else {
+            secondaryButton = nil
+            secondaryBehavior = nil
+            secondaryIntent = nil
+        }
 
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: title),
@@ -89,10 +116,8 @@ final class AlarmKitScheduler: AlarmScheduling {
                 textColor: .white,
                 systemImageName: "stop.circle"
             ),
-            secondaryButton: allowsSnooze
-                ? AlarmButton(text: "Posponer", textColor: .white, systemImageName: "zzz")
-                : nil,
-            secondaryButtonBehavior: allowsSnooze ? .countdown : nil
+            secondaryButton: secondaryButton,
+            secondaryButtonBehavior: secondaryBehavior
         )
 
         let attributes = AlarmAttributes(
@@ -101,9 +126,13 @@ final class AlarmKitScheduler: AlarmScheduling {
             tintColor: Color.accentColor
         )
 
+        let alertSound: AlertConfiguration.AlertSound = sound.fileName.map { .named($0) } ?? .default
+
         let configuration = AlarmManager.AlarmConfiguration(
             schedule: schedule,
-            attributes: attributes
+            attributes: attributes,
+            secondaryIntent: secondaryIntent,
+            sound: alertSound
         )
 
         _ = try await AlarmManager.shared.schedule(id: id, configuration: configuration)

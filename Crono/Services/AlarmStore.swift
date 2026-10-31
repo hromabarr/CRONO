@@ -46,7 +46,9 @@ final class AlarmStore {
         snoozeEnabled: Bool = true,
         disarmMethod: DisarmMethod = .stop,
         disarmHint: String = "",
-        insistence: InsistencePlan = .none
+        insistence: InsistencePlan = .none,
+        sound: AlarmSound = .system,
+        followUpSound: AlarmSound = .system
     ) async -> AlarmItem? {
         let item = AlarmItem(
             label: label.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -56,6 +58,8 @@ final class AlarmStore {
             sortIndex: nextSortIndex()
         )
         Self.applyDisarm(disarmMethod, hint: disarmHint, insistence: insistence, to: item)
+        item.sound = sound
+        item.followUpSound = followUpSound
         context.insert(item)
 
         guard save(action: "crear la alarma") else {
@@ -75,7 +79,9 @@ final class AlarmStore {
         snoozeEnabled: Bool,
         disarmMethod: DisarmMethod,
         disarmHint: String,
-        insistence: InsistencePlan
+        insistence: InsistencePlan,
+        sound: AlarmSound? = nil,
+        followUpSound: AlarmSound? = nil
     ) async {
         guard !isBlockedWhileInsisting(item, action: "guardar la alarma") else { return }
 
@@ -84,6 +90,8 @@ final class AlarmStore {
         item.schedule = schedule
         item.snoozeEnabled = snoozeEnabled
         Self.applyDisarm(disarmMethod, hint: disarmHint, insistence: insistence, to: item)
+        if let sound { item.sound = sound }
+        if let followUpSound { item.followUpSound = followUpSound }
 
         guard save(action: "guardar la alarma") else {
             context.rollback()

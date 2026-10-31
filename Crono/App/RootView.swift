@@ -65,6 +65,13 @@ struct RootView: View {
         .fullScreenCover(item: $disarming) { alarm in
             DisarmView(alarm: alarm)
         }
+        // El botón «Desarmar» de la alerta abre la app y avisa: no hace falta
+        // esperar a la comprobación periódica.
+        .onReceive(NotificationCenter.default.publisher(for: .cronoDisarmRequested)) { _ in
+            if disarming == nil {
+                disarming = alarmStore.alarmAwaitingDisarm()
+            }
+        }
         .task(id: scenePhase) {
             // Al volver a la app, y cada medio minuto mientras está abierta:
             // una vuelta puede sonar con la app delante, y entonces no hay
