@@ -294,6 +294,20 @@ final class ReminderStore {
 
     // MARK: - Avisos
 
+    /// Cancela los avisos de todas las tareas. Para restaurar una copia.
+    func cancelAllNotifications() async {
+        for reminder in fetch(FetchDescriptor<Reminder>(), action: "cargar las tareas") {
+            await notifier.cancel(reminderID: reminder.uuid)
+        }
+    }
+
+    /// Vuelve a programar el aviso de cada tarea pendiente.
+    func resyncNotifications() async {
+        for reminder in pendingReminders() {
+            await syncNotification(for: reminder)
+        }
+    }
+
     /// Deja el aviso del sistema acorde con la tarea.
     ///
     /// Solo avisan las tareas con **hora**: sin ella no hay momento al que

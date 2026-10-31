@@ -1,4 +1,6 @@
+import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// Ajustes de la app.
 ///
@@ -9,6 +11,17 @@ struct SettingsView: View {
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .system
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Environment(AlarmStore.self) private var alarmStore
+    @Environment(ReminderStore.self) private var reminderStore
+
+    /// La copia lista para compartir. Se prepara al abrir Ajustes.
+    @State private var exportFile: BackupFile?
+    @State private var showingImporter = false
+    /// La copia leída, esperando confirmación antes de sustituir nada.
+    @State private var pendingRestore: CronoBackup?
+    @State private var backupMessage: BackupMessage?
+    @State private var lastAutoBackup: Date?
 
     init() {}
 
@@ -16,6 +29,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 appearanceSection
+                backupSection
             }
             .navigationTitle(Text("Ajustes"))
             .navigationBarTitleDisplayMode(.inline)
@@ -24,6 +38,131 @@ struct SettingsView: View {
                     Button("Listo") { dismiss() }
                         .fontWeight(.semibold)
                 }
+            }
+            .task { prepareExport() }
+            .fileImporter(isPresented: $showingImporter, allowedContentTypes: [.json]) { result in
+                readBackup(result)
+            }
+            .confirmationDialog(
+                "¿Restaurar esta copia?",
+                isPresented: isConfirmingRestore,
+                titleVisibility: .visible,
+                presenting: pendingRestore
+            ) { backup in
+                Button("Sustituir mis datos", role: .destructive) { restore(backup) }
+                Button("Cancelar", role: .cancel) {}
+            } message: { backup in
+                Text("Se borrará todo lo que hay ahora en Crono y se pondrá lo de la copia: \(backup.summary).")
+            }
+            .alert(
+                backupMessage?.title ?? "",
+                isPresented: isShowingMessage,
+                presenting: backupMessage
+            ) { _ in
+                Button("Entendido", role: .cancel) {}
+            } message: { message in
+                Text(message.text)
+            }
+        }
+    }
+
+    // MARK: - Copia de seguridad
+
+    private var backupSection: some View {
+        Section {
+            if let exportFile {
+                ShareLink(
+                    item: exportFile,
+                    preview: SharePreview("Copia de Crono", image: Image(systemName: "archivebox"))
+                ) {
+                    Label("Exportar copia", systemImage: "square.and.arrow.up")
+                }
+            }
+
+            Button {
+                showingImporter = true
+            } label: {
+                Label("Restaurar desde archivo", systemImage: "square.and.arrow.down")
+            }
+        } header: {
+            Text("Copia de seguridad")
+        } footer: {
+            Text(backupFootnote)
+        }
+    }
+
+    private var backupFootnote: String {
+        var text = "Crono guarda una copia cada día en Archivos › En mi iPhone › Crono › Copias, y conserva las \(AutoBackup.keep) últimas."
+        if let lastAutoBackup {
+            let when = lastAutoBackup.formatted(.relative(presentation: .named))
+            text += " La última es de \(when)."
+        }
+        return text
+    }
+
+    /// Fuera del cuerpo por lo mismo que en `RootView`: un `Binding` con dos
+    /// cierres dentro de una cadena de modificadores dispara los «unable to
+    /// type-check».
+    private var isConfirmingRestore: Binding<Bool> {
+        Binding(
+            get: { pendingRestore != nil },
+            set: { if !$0 { pendingRestore = nil } }
+        )
+    }
+
+    private var isShowingMessage: Binding<Bool> {
+        Binding(
+            get: { backupMessage != nil },
+            set: { if !$0 { backupMessage = nil } }
+        )
+    }
+
+    private func prepareExport() {
+        lastAutoBackup = AutoBackup.latestBackupDate()
+        do {
+            let data = try BackupService.encode(BackupService.snapshot(of: context))
+            exportFile = BackupFile(data: data, name: AutoBackup.fileName(for: .now))
+        } catch {
+            exportFile = nil
+        }
+    }
+
+    private func readBackup(_ result: Result<URL, Error>) {
+        do {
+            let url = try result.get()
+            // Un archivo de iCloud Drive o de otra app solo se puede leer
+            // dentro de este permiso.
+            let granted = url.startAccessingSecurityScopedResource()
+            defer { if granted { url.stopAccessingSecurityScopedResource() } }
+            let data = try Data(contentsOf: url)
+            pendingRestore = try BackupService.decode(data)
+        } catch {
+            backupMessage = BackupMessage(
+                title: "No se pudo leer la copia",
+                text: error.localizedDescription
+            )
+        }
+    }
+
+    private func restore(_ backup: CronoBackup) {
+        Task {
+            do {
+                try await BackupService.restore(
+                    backup,
+                    into: context,
+                    alarmStore: alarmStore,
+                    reminderStore: reminderStore
+                )
+                backupMessage = BackupMessage(
+                    title: "Copia restaurada",
+                    text: "Ya tienes \(backup.summary)."
+                )
+                prepareExport()
+            } catch {
+                backupMessage = BackupMessage(
+                    title: "No se pudo restaurar",
+                    text: "Tus datos siguen como estaban. \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -61,6 +200,29 @@ struct SettingsView: View {
     }
 }
 
+/// La copia como archivo para compartir: guardarla en Archivos, mandarla por
+/// correo, dejarla en iCloud Drive.
+struct BackupFile: Transferable {
+    let data: Data
+    let name: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .json) { file in file.data }
+            .suggestedFileName { $0.name }
+    }
+}
+
+private struct BackupMessage: Identifiable {
+    let id = UUID()
+    let title: String
+    let text: String
+}
+
 #Preview("Ajustes") {
+    let container = PreviewData.container()
+
     SettingsView()
+        .modelContainer(container)
+        .environment(PreviewData.alarmStore(for: container))
+        .environment(PreviewData.reminderStore(for: container))
 }

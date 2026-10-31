@@ -63,6 +63,11 @@ targets:
         CFBundleDisplayName: Crono
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # La carpeta Documentos de la app aparece en Archivos › En mi iPhone ›
+        # Crono. Ahí van las copias automáticas, para que sobrevivan aunque
+        # haya que reinstalar la app.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false

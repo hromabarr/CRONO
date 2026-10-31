@@ -113,6 +113,9 @@ struct CronoApp: App {
                     // que el usuario ve activada tiene que volver a sonar.
                     await alarmStore.resyncAll()
 
+                    // Una copia al día en Archivos, por si hay que reinstalar.
+                    AutoBackup.runIfNeeded(context: container.mainContext)
+
                     if let storageWarning {
                         store.failure = StoreFailure(
                             action: "usar el almacenamiento",

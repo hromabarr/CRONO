@@ -206,6 +206,17 @@ final class AlarmStore {
         _ = save(action: "desactivar la alarma")
     }
 
+    /// Da de baja del sistema todas las alarmas y sus vueltas.
+    ///
+    /// Para restaurar una copia: los modelos se van a borrar, y sin esto sus
+    /// alarmas seguirían sonando. Las alarmas siguen guardadas; `resyncAll()`
+    /// las vuelve a registrar.
+    func unscheduleAll() async {
+        for item in allAlarms() {
+            await unschedule(item)
+        }
+    }
+
     /// Vuelve a registrar todas las alarmas activas.
     ///
     /// Se llama al arrancar: las alarmas del sistema pueden haberse perdido al
