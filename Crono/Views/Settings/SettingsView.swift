@@ -30,6 +30,7 @@ struct SettingsView: View {
             Form {
                 appearanceSection
                 backupSection
+                aboutSection
             }
             .navigationTitle(Text("Ajustes"))
             .navigationBarTitleDisplayMode(.inline)
@@ -67,6 +68,37 @@ struct SettingsView: View {
     }
 
     // MARK: - Copia de seguridad
+
+    // MARK: - Acerca de
+
+    /// La versión y el identificador con que está instalada la app.
+    ///
+    /// Sirven para saber si la tienda desde la que se instaló ha actualizado de
+    /// verdad, y si al firmarla le cambió el identificador: con otro
+    /// identificador, iOS la trata como una app distinta y la tienda no la
+    /// relaciona con su repositorio.
+    private var aboutSection: some View {
+        Section {
+            LabeledContent("Versión", value: Self.versionText)
+            LabeledContent("Identificador") {
+                Text(Bundle.main.bundleIdentifier ?? "—")
+                    .font(.footnote.monospaced())
+                    .textSelection(.enabled)
+            }
+        } header: {
+            Text("Acerca de")
+        } footer: {
+            Text("Si al actualizar no aparece la versión nueva, compara estos datos con los del repositorio en la tienda.")
+        }
+    }
+
+    /// «1.0.44 (44)».
+    static var versionText: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "\(version) (\(build))"
+    }
 
     private var backupSection: some View {
         Section {
