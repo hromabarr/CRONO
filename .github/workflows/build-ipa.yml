@@ -278,9 +278,19 @@ jobs:
     if: inputs.ipa
     runs-on: macos-latest
     timeout-minutes: 30
+    # Para crear la release que lee FlareStore.
+    permissions:
+      contents: write
+    env:
+      VERSION: 1.0.${{ github.run_number }}
+      BUILD: ${{ github.run_number }}
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Todo el historial y las etiquetas: las notas de la versión son los
+          # commits desde la release anterior.
+          fetch-depth: 0
 
       - name: Instalar XcodeGen
         run: brew install xcodegen
@@ -302,7 +312,9 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" \
-            ONLY_ACTIVE_ARCH=NO
+            ONLY_ACTIVE_ARCH=NO \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD"
 
       # Un .ipa no es más que un zip con la app dentro de una carpeta llamada
       # Payload. Al no estar firmada no sirve `xcodebuild exportArchive`:
@@ -325,3 +337,108 @@ jobs:
           name: Crono-ipa
           path: Crono-sin-firmar.ipa
           retention-days: 30
+
+      # ─────────────────────────────────────────────────────────────
+      # Publicación para FlareStore (o cualquier tienda que lea fuentes
+      # con el formato de AltStore).
+      #
+      # Cada compilación de main crea una release con el .ipa y un
+      # repo.json que apunta a él. FlareStore se queda con esta dirección
+      # fija, que GitHub redirige siempre a la release más reciente:
+      #
+      #   https://github.com/<usuario>/<repo>/releases/latest/download/repo.json
+      #
+      # Así no hay que hacer commits desde CI para actualizar la fuente.
+      # ─────────────────────────────────────────────────────────────
+      - name: Publicar la versión
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$VERSION"
+          REPO_URL="https://github.com/$GITHUB_REPOSITORY"
+          RAW_URL="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA"
+          ICON_URL="$RAW_URL/Crono/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+          DOWNLOAD_URL="$REPO_URL/releases/download/$TAG/Crono.ipa"
+
+          # Notas: los títulos de los commits desde la release anterior.
+          PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          if [ -n "$PREVIOUS" ]; then
+            NOTES=$(git log --no-merges --format='- %s' "$PREVIOUS..HEAD")
+          else
+            NOTES=$(git log --no-merges --format='- %s' -10)
+          fi
+          if [ -z "$NOTES" ]; then
+            NOTES="- Misma versión, compilada de nuevo."
+          fi
+
+          cp Crono-sin-firmar.ipa Crono.ipa
+          SIZE=$(stat -f%z Crono.ipa)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          # Se rellenan a la vez los campos de versión actuales (`versions`) y
+          # los antiguos (`version`, `downloadURL`…): las tiendas derivadas de
+          # AltStore no leen todas los mismos.
+          jq -n \
+            --arg version "$VERSION" \
+            --arg build "$BUILD" \
+            --arg date "$DATE" \
+            --arg notes "$NOTES" \
+            --arg download "$DOWNLOAD_URL" \
+            --arg icon "$ICON_URL" \
+            --arg website "$REPO_URL" \
+            --arg bundle "$BUNDLE_ID" \
+            --argjson size "$SIZE" \
+            '{
+              name: "Crono",
+              identifier: ($bundle + ".source"),
+              subtitle: "Hábitos, tareas y alarmas",
+              website: $website,
+              iconURL: $icon,
+              tintColor: "#344C5C",
+              apps: [{
+                name: "Crono",
+                bundleIdentifier: $bundle,
+                developerName: "Xilgar",
+                subtitle: "Hábitos, tareas y alarmas",
+                localizedDescription: "Hábitos con rutinas de mañana y noche, tareas con avisos y alarmas que no paran hasta que escaneas tu código.",
+                iconURL: $icon,
+                tintColor: "#344C5C",
+                category: "productivity",
+                version: $version,
+                versionDate: $date,
+                versionDescription: $notes,
+                downloadURL: $download,
+                size: $size,
+                versions: [{
+                  version: $version,
+                  buildVersion: $build,
+                  date: $date,
+                  localizedDescription: $notes,
+                  downloadURL: $download,
+                  size: $size,
+                  minOSVersion: "26.0"
+                }],
+                appPermissions: {
+                  entitlements: [],
+                  privacy: {
+                    NSCameraUsageDescription: "Para leer el código que desarma una alarma.",
+                    NSAlarmKitUsageDescription: "Para poner alarmas que suenan aunque el móvil esté en silencio."
+                  }
+                }
+              }],
+              news: []
+            }' > repo.json
+
+          cat repo.json
+
+          gh release create "$TAG" Crono.ipa repo.json \
+            --target "$GITHUB_SHA" \
+            --title "Crono $VERSION" \
+            --notes "$NOTES"
+
+          {
+            echo "### Publicada Crono $VERSION"
+            echo
+            echo "Fuente para FlareStore: \`$REPO_URL/releases/latest/download/repo.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"

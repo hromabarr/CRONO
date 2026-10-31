@@ -48,6 +48,12 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1,2"
+        # La versión de una compilación local. En CI se sustituyen las dos por
+        # el número de ejecución (1.0.<n> y <n>): la tienda desde la que se
+        # instala solo ofrece una actualización si la versión ha subido, y
+        # algunas miran solo la versión visible, no la de compilación.
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
     info:
       path: Crono/Info.plist
       # Los ajustes INFOPLIST_KEY_* de Xcode solo se aplican cuando
@@ -55,6 +61,8 @@ targets:
       # las claves van en este bloque.
       properties:
         CFBundleDisplayName: Crono
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:
           UIColorName: ""
         ITSAppUsesNonExemptEncryption: false
