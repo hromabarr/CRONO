@@ -163,6 +163,7 @@ final class AlarmStore {
             let id = try await scheduler.schedule(item)
             item.systemAlarmID = id
             _ = save(action: "activar la alarma")
+            await topUpFollowUps(item, now: .now)
         } catch {
             // La alarma queda guardada y sin registrar. La interfaz lo indica.
             item.systemAlarmID = nil
@@ -175,7 +176,16 @@ final class AlarmStore {
     }
 
     private func unschedule(_ item: AlarmItem) async {
-        guard let id = item.systemAlarmID else { return }
+        let now = Date.now
+        for entry in item.scheduledFollowUps {
+            await cancelFollowUp(entry, now: now)
+        }
+        item.followUpAlarmIDsRaw = ""
+
+        guard let id = item.systemAlarmID else {
+            _ = save(action: "desactivar la alarma")
+            return
+        }
 
         do {
             try await scheduler.cancel(systemAlarmID: id)
@@ -205,6 +215,98 @@ final class AlarmStore {
         for item in allAlarms() where item.isSchedulable && item.systemAlarmID == nil {
             await syncWithSystem(item)
         }
+
+        // Las vueltas se registran solo unas mañanas por delante, así que cada
+        // arranque es la ocasión de rellenarlas.
+        for item in allAlarms() where item.systemAlarmID != nil {
+            await topUpFollowUps(item, now: .now)
+        }
+    }
+
+    // MARK: - Insistencia y desarme
+
+    /// La alarma que está sonando —o acaba de sonar— y espera que se desarme.
+    func alarmAwaitingDisarm(at now: Date = .now) -> AlarmItem? {
+        allAlarms().first { $0.occurrenceAwaitingDisarm(at: now) != nil }
+    }
+
+    /// Cancela las vueltas que quedan de esta mañana.
+    ///
+    /// Solo las de esta mañana: las de los días siguientes siguen registradas,
+    /// porque desarmar hoy no es apagar la insistencia.
+    func disarm(_ item: AlarmItem, now: Date = .now) async {
+        guard let occurrence = item.occurrenceAwaitingDisarm(at: now) else { return }
+
+        let entries = item.scheduledFollowUps
+        for entry in entries where entry.occurrence == occurrence {
+            await cancelFollowUp(entry, now: now)
+        }
+        item.scheduledFollowUps = entries.filter { $0.occurrence != occurrence }
+        _ = save(action: "desarmar la alarma")
+
+        await topUpFollowUps(item, now: now)
+    }
+
+    /// Quita las vueltas que ya sonaron y registra las de las próximas mañanas.
+    ///
+    /// Solo añade mañanas que **aún no han empezado**. Es lo que impide que una
+    /// mañana recién desarmada recupere sus vueltas al rellenar, y que instalar
+    /// la app con una alarma sonando empiece a insistir a mitad.
+    private func topUpFollowUps(_ item: AlarmItem, now: Date) async {
+        var entries = item.scheduledFollowUps
+
+        let expired = entries.filter { $0.fireDate.addingTimeInterval(60) < now }
+        for entry in expired {
+            await cancelFollowUp(entry, now: now)
+        }
+        entries.removeAll { expired.contains($0) }
+
+        if item.requiresDisarm, item.isSchedulable, item.systemAlarmID != nil {
+            let covered = Set(entries.map(\.occurrence))
+            let occurrences = InsistenceCalculator.occurrences(
+                minuteOfDay: item.minuteOfDay,
+                schedule: item.schedule,
+                from: now.addingTimeInterval(1),
+                count: InsistenceCalculator.occurrencesAhead
+            )
+
+            register: for occurrence in occurrences where !covered.contains(occurrence) {
+                let dates = InsistenceCalculator.fireDates(after: occurrence, plan: item.insistence)
+                for (index, date) in dates.enumerated() {
+                    do {
+                        let id = try await scheduler.scheduleFollowUp(of: item, at: date, ordinal: index + 1)
+                        entries.append(ScheduledFollowUp(systemID: id, occurrence: occurrence, fireDate: date))
+                    } catch {
+                        // Lo registrado hasta aquí se guarda, para poder
+                        // cancelarlo; el próximo arranque reintenta el resto.
+                        failure = StoreFailure(
+                            action: "programar las vueltas de la alarma",
+                            reason: error.localizedDescription
+                        )
+                        break register
+                    }
+                }
+            }
+        }
+
+        item.scheduledFollowUps = entries
+        _ = save(action: "guardar las vueltas de la alarma")
+    }
+
+    /// Da de baja una vuelta.
+    ///
+    /// Si ya sonó, un fallo al cancelarla no se cuenta: el sistema puede haberla
+    /// olvidado ya, y avisar de ello sería una alerta por nada. Si aún no ha
+    /// sonado, sí, porque va a sonar por una alarma que el usuario cree resuelta.
+    private func cancelFollowUp(_ entry: ScheduledFollowUp, now: Date) async {
+        do {
+            try await scheduler.cancel(systemAlarmID: entry.systemID)
+        } catch let error where entry.fireDate > now {
+            failure = StoreFailure(
+                action: "cancelar una vuelta de la alarma",
+                reason: error.localizedDescription
+            )
+        } catch {}
     }
 
     /// Relee el permiso del planificador.

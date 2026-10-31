@@ -4,19 +4,115 @@ import Testing
 
 @testable import Crono
 
-/// Pruebas del desarme tal y como lo guarda el almacén de alarmas.
+/// Pruebas del desarme tal y como lo guarda y lo aplica el almacén de alarmas.
 @MainActor
 @Suite("Almacén de alarmas: desarme")
 struct AlarmStoreTests {
 
     func makeStore() throws -> (store: AlarmStore, context: ModelContext) {
+        let (store, context, _) = try makeStoreWithScheduler()
+        return (store, context)
+    }
+
+    func makeStoreWithScheduler() throws -> (store: AlarmStore, context: ModelContext, scheduler: NoopAlarmScheduler) {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(
             for: Schema.crono, configurations: configuration
         )
         let context = ModelContext(container)
-        return (AlarmStore(context: context, scheduler: NoopAlarmScheduler()), context)
+        let scheduler = NoopAlarmScheduler()
+        return (AlarmStore(context: context, scheduler: scheduler), context, scheduler)
     }
+
+    /// Una alarma de todos los días con el plan por defecto, y la primera vez
+    /// que va a sonar.
+    ///
+    /// La hora se elige a dos horas vista para que la primera mañana registrada
+    /// sea siempre la próxima, corra el CI a la hora que corra.
+    func makeInsistentAlarm(
+        in store: AlarmStore
+    ) async throws -> (alarm: AlarmItem, firstOccurrence: Date) {
+        let minute = (AlarmStore.minuteOfDay(of: .now) + 120) % (24 * 60)
+        let alarm = try #require(
+            await store.create(
+                minuteOfDay: minute,
+                schedule: .everyDay,
+                disarmMethod: .arithmetic,
+                insistence: .default
+            )
+        )
+        let first = try #require(
+            InsistenceCalculator.occurrences(
+                minuteOfDay: minute, schedule: .everyDay, from: .now, count: 1
+            ).first
+        )
+        return (alarm, first)
+    }
+
+    // MARK: - Vueltas
+
+    @Test("Armar registra las vueltas de las próximas mañanas")
+    func armingRegistersFollowUps() async throws {
+        let (store, _, scheduler) = try makeStoreWithScheduler()
+        let (alarm, first) = try await makeInsistentAlarm(in: store)
+
+        let perMorning = InsistencePlan.default.repeats
+        let mornings = InsistenceCalculator.occurrencesAhead
+        #expect(alarm.scheduledFollowUps.count == perMorning * mornings)
+        #expect(scheduler.followUps.count == perMorning * mornings)
+
+        let firstMorning = alarm.scheduledFollowUps.filter { $0.occurrence == first }
+        let expected = InsistenceCalculator.fireDates(after: first, plan: .default)
+        #expect(firstMorning.map(\.fireDate) == expected)
+    }
+
+    @Test("Solo espera desarme desde que suena hasta un minuto después de la última vuelta")
+    func awaitingWindow() async throws {
+        let (store, _) = try makeStore()
+        let (alarm, first) = try await makeInsistentAlarm(in: store)
+        let minute: TimeInterval = 60
+
+        // Abrir la app cinco minutos antes no debe enseñar el desarme.
+        #expect(alarm.occurrenceAwaitingDisarm(at: first.addingTimeInterval(-5 * minute)) == nil)
+        #expect(alarm.occurrenceAwaitingDisarm(at: first.addingTimeInterval(4 * minute)) == first)
+        #expect(alarm.occurrenceAwaitingDisarm(at: first.addingTimeInterval(13 * minute)) == first)
+        #expect(alarm.occurrenceAwaitingDisarm(at: first.addingTimeInterval(14 * minute)) == nil)
+    }
+
+    @Test("Desarmar cancela esta mañana y deja las siguientes")
+    func disarmCancelsOnlyThisMorning() async throws {
+        let (store, _, scheduler) = try makeStoreWithScheduler()
+        let (alarm, first) = try await makeInsistentAlarm(in: store)
+        let ringing = first.addingTimeInterval(4 * 60)
+
+        #expect(store.alarmAwaitingDisarm(at: ringing)?.uuid == alarm.uuid)
+
+        await store.disarm(alarm, now: ringing)
+
+        #expect(alarm.occurrenceAwaitingDisarm(at: ringing) == nil)
+        #expect(store.alarmAwaitingDisarm(at: ringing) == nil)
+        #expect(!alarm.scheduledFollowUps.contains { $0.occurrence == first })
+
+        // Rellenar tras desarmar añade una mañana al final, nunca recupera la
+        // que se acaba de desarmar.
+        let perMorning = InsistencePlan.default.repeats
+        let mornings = InsistenceCalculator.occurrencesAhead
+        #expect(alarm.scheduledFollowUps.count == perMorning * mornings)
+        #expect(scheduler.followUps.count == perMorning * mornings)
+    }
+
+    @Test("Desactivar la alarma cancela todas las vueltas")
+    func disablingCancelsFollowUps() async throws {
+        let (store, _, scheduler) = try makeStoreWithScheduler()
+        let (alarm, _) = try await makeInsistentAlarm(in: store)
+
+        await store.setEnabled(false, for: alarm)
+
+        #expect(alarm.scheduledFollowUps.isEmpty)
+        #expect(scheduler.followUps.isEmpty)
+    }
+
+    // MARK: - Lo que se guarda
 
     @Test("Una alarma con código guarda el código, la pista y el plan")
     func createWithScannedCode() async throws {

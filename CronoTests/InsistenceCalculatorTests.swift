@@ -205,4 +205,67 @@ struct InsistenceCalculatorTests {
         let method = DisarmCode.method(for: "  8414533043 ")
         #expect(method == DisarmMethod.scannedCode(value: "8414533043"))
     }
+
+    // MARK: - Vueltas con fecha
+
+    private var utc: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        return calendar
+    }
+
+    private func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int, _ minute: Int) -> Date {
+        utc.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
+    }
+
+    @Test("Las próximas mañanas saltan los días sin alarma")
+    func occurrencesSkipUnscheduledDays() {
+        // Viernes 30 de octubre de 2026, a las 8:00: la de las 7:00 ya sonó hoy.
+        let occurrences = InsistenceCalculator.occurrences(
+            minuteOfDay: 7 * 60,
+            schedule: .weekdays,
+            from: date(2026, 10, 30, 8, 0),
+            count: 3,
+            calendar: utc
+        )
+
+        #expect(occurrences == [
+            date(2026, 11, 2, 7, 0),
+            date(2026, 11, 3, 7, 0),
+            date(2026, 11, 4, 7, 0)
+        ])
+    }
+
+    @Test("La mañana de hoy cuenta si aún no ha sonado")
+    func occurrencesIncludeToday() {
+        let occurrences = InsistenceCalculator.occurrences(
+            minuteOfDay: 7 * 60,
+            schedule: .everyDay,
+            from: date(2026, 10, 30, 6, 0),
+            count: 1,
+            calendar: utc
+        )
+
+        #expect(occurrences == [date(2026, 10, 30, 7, 0)])
+    }
+
+    @Test("Las vueltas con fecha cruzan medianoche sin ayuda")
+    func fireDatesCrossMidnight() {
+        let dates = InsistenceCalculator.fireDates(
+            after: date(2026, 10, 30, 23, 58),
+            plan: InsistencePlan(intervalMinutes: 3, repeats: 2)
+        )
+
+        #expect(dates == [date(2026, 10, 31, 0, 1), date(2026, 10, 31, 0, 4)])
+    }
+
+    @Test("La cuenta acepta solo su resultado")
+    func arithmeticChallenge() {
+        let challenge = ArithmeticChallenge(factor: 7, multiplier: 13, addend: 42)
+
+        #expect(challenge.answer == 133)
+        #expect(challenge.accepts(" 133 "))
+        #expect(!challenge.accepts("134"))
+        #expect(!challenge.accepts(""))
+    }
 }

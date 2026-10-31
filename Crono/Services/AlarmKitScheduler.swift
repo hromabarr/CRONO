@@ -42,25 +42,57 @@ final class AlarmKitScheduler: AlarmScheduling {
     }
 
     func schedule(_ item: AlarmItem) async throws -> UUID {
-        let id = UUID()
-
         let time = Alarm.Schedule.Relative.Time(hour: item.hour, minute: item.minute)
         let recurrence = Alarm.Schedule.Relative.Recurrence.weekly(Self.weekdays(from: item.schedule))
         let schedule = Alarm.Schedule.relative(
             Alarm.Schedule.Relative(time: time, repeats: recurrence)
         )
 
+        return try await register(
+            item,
+            schedule: schedule,
+            title: item.displayLabel,
+            allowsSnooze: item.snoozeEnabled
+        )
+    }
+
+    func scheduleFollowUp(of item: AlarmItem, at date: Date, ordinal: Int) async throws -> UUID {
+        // El título dice qué hacer, porque es lo único que se lee medio
+        // dormido: parar aquí no basta, y hay que saber adónde ir.
+        let hint = item.disarmHint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = hint.isEmpty
+            ? "\(item.displayLabel) · Abre Crono para desarmar"
+            : "\(item.displayLabel) · Escanea: \(hint)"
+
+        // Sin Posponer: una vuelta pospuesta sería una vuelta más que el plan
+        // no cuenta, y posponer es justo lo contrario de desarmar.
+        return try await register(
+            item,
+            schedule: .fixed(date),
+            title: title,
+            allowsSnooze: false
+        )
+    }
+
+    private func register(
+        _ item: AlarmItem,
+        schedule: Alarm.Schedule,
+        title: String,
+        allowsSnooze: Bool
+    ) async throws -> UUID {
+        let id = UUID()
+
         let alert = AlarmPresentation.Alert(
-            title: LocalizedStringResource(stringLiteral: item.displayLabel),
+            title: LocalizedStringResource(stringLiteral: title),
             stopButton: AlarmButton(
                 text: "Parar",
                 textColor: .white,
                 systemImageName: "stop.circle"
             ),
-            secondaryButton: item.snoozeEnabled
+            secondaryButton: allowsSnooze
                 ? AlarmButton(text: "Posponer", textColor: .white, systemImageName: "zzz")
                 : nil,
-            secondaryButtonBehavior: item.snoozeEnabled ? .countdown : nil
+            secondaryButtonBehavior: allowsSnooze ? .countdown : nil
         )
 
         let attributes = AlarmAttributes(

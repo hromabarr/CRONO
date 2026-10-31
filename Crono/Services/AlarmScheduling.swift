@@ -32,6 +32,11 @@ protocol AlarmScheduling {
     /// quedó registrada, para poder cancelarla más tarde.
     func schedule(_ item: AlarmItem) async throws -> UUID
 
+    /// Registra una vuelta de la alarma: una sola vez, en una fecha fija.
+    ///
+    /// `ordinal` empieza en 1 y solo sirve para el texto de la alerta.
+    func scheduleFollowUp(of item: AlarmItem, at date: Date, ordinal: Int) async throws -> UUID
+
     /// Da de baja una alarma ya registrada.
     func cancel(systemAlarmID: UUID) async throws
 }
@@ -45,6 +50,7 @@ protocol AlarmScheduling {
 @MainActor
 final class NoopAlarmScheduler: AlarmScheduling {
     private(set) var scheduled: [UUID: AlarmItem] = [:]
+    private(set) var followUps: [UUID: Date] = [:]
 
     var authorization: AlarmAuthorization
 
@@ -62,7 +68,14 @@ final class NoopAlarmScheduler: AlarmScheduling {
         return id
     }
 
+    func scheduleFollowUp(of item: AlarmItem, at date: Date, ordinal: Int) async throws -> UUID {
+        let id = UUID()
+        followUps[id] = date
+        return id
+    }
+
     func cancel(systemAlarmID: UUID) async throws {
         scheduled[systemAlarmID] = nil
+        followUps[systemAlarmID] = nil
     }
 }

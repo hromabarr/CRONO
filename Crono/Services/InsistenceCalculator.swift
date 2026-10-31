@@ -57,7 +57,10 @@ struct FollowUpAlarm: Equatable, Sendable {
 /// justas: sonarían la madrugada equivocada.
 enum InsistenceCalculator {
 
-    /// Las vueltas de una alarma, en orden.
+    /// Las vueltas de una alarma, en orden, como horas de reloj semanales.
+    ///
+    /// Es la forma de enseñarlas («7:03, 7:06…»). Para registrarlas en el
+    /// sistema se usan fechas fijas: ver `occurrencesAhead`.
     ///
     /// Devuelve vacío si el plan no insiste o si la alarma no tiene días —una
     /// alarma que no suena no tiene de qué volver—.
@@ -101,5 +104,87 @@ enum InsistenceCalculator {
     /// veces» no dice nada; «te insistirá durante 12 minutos», sí.
     static func totalSpanMinutes(_ plan: InsistencePlan) -> Int {
         plan.isActive ? plan.intervalMinutes * plan.repeats : 0
+    }
+}
+
+// MARK: - Vueltas con fecha
+
+/// Una vuelta ya registrada en el sistema, con la fecha exacta en que suena.
+struct ScheduledFollowUp: Equatable, Sendable {
+    /// Con qué identificador quedó registrada, para poder cancelarla.
+    let systemID: UUID
+
+    /// Cuándo sonó —o sonará— la alarma principal de la que es vuelta.
+    ///
+    /// Es lo que agrupa las vueltas de una misma mañana: desarmar cancela las de
+    /// esta mañana y deja intactas las de mañana.
+    let occurrence: Date
+
+    let fireDate: Date
+}
+
+extension InsistenceCalculator {
+
+    /// Cuántas mañanas por delante quedan registradas.
+    ///
+    /// ## Por qué fechas fijas y no una repetición semanal
+    ///
+    /// Una vuelta semanal «lunes a viernes a las 7:03» no se puede cancelar solo
+    /// para hoy: cancelarla la quita de todos los días. Y desarmar tiene que
+    /// callar esta mañana sin apagar la insistencia de la siguiente.
+    ///
+    /// Así que cada vuelta es una alarma de fecha fija, y se registran las de
+    /// unas pocas mañanas por delante. Se rellenan cada vez que se abre la app y
+    /// al desarmar, que exige abrirla; tres mañanas cubren un fin de semana sin
+    /// tocar el teléfono. Si pasan más días sin abrirla, la alarma principal
+    /// sigue sonando igual: lo que se pierde es solo la insistencia.
+    static let occurrencesAhead = 3
+
+    /// Las próximas veces que suena una alarma, a partir de `start` incluido.
+    ///
+    /// Recorre días en lugar de sumar minutos: el día del cambio de hora,
+    /// «las 7:00» no está a 24 horas de las 7:00 del día anterior.
+    static func occurrences(
+        minuteOfDay: Int,
+        schedule: WeekdaySet,
+        from start: Date,
+        count: Int,
+        calendar: Calendar = AppCalendar.current
+    ) -> [Date] {
+        guard !schedule.isEmpty, count > 0 else { return [] }
+
+        let firstDay = calendar.startOfDay(for: start)
+        var result: [Date] = []
+
+        // Con al menos un día marcado, una semana y un día bastan para encontrar
+        // cada ocurrencia; el tope evita un bucle infinito si algo falla.
+        for offset in 0..<(8 * count) {
+            guard result.count < count,
+                  let day = calendar.date(byAdding: .day, value: offset, to: firstDay),
+                  schedule.contains(weekday: calendar.component(.weekday, from: day)),
+                  let date = calendar.date(
+                      bySettingHour: minuteOfDay / 60,
+                      minute: minuteOfDay % 60,
+                      second: 0,
+                      of: day
+                  ),
+                  date >= start
+            else { continue }
+            result.append(date)
+        }
+
+        return result
+    }
+
+    /// Cuándo suenan las vueltas de una ocurrencia, en orden.
+    ///
+    /// Se suma tiempo y no hora de reloj, a propósito: «tres minutos después»
+    /// son tres minutos aunque en medio cambie la hora. Y cruzar medianoche no
+    /// necesita nada especial, porque una fecha ya sabe qué día es.
+    static func fireDates(after occurrence: Date, plan: InsistencePlan) -> [Date] {
+        guard plan.isActive else { return [] }
+        return (1...plan.repeats).map { ordinal in
+            occurrence.addingTimeInterval(TimeInterval(ordinal * plan.intervalMinutes * 60))
+        }
     }
 }

@@ -20,6 +20,10 @@ struct RootView: View {
     @Environment(AlarmStore.self) private var alarmStore
 
     @State private var selectedTab: AppTab = .initial
+    /// La alarma cuya pantalla de desarme está abierta.
+    @State private var disarming: AlarmItem?
+
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .system
 
@@ -57,6 +61,21 @@ struct RootView: View {
             // Un fallo al guardar se cuenta. Tragárselo con `try?` haría que la
             // app pareciera haber guardado algo que no guardó.
             Text(failure.message)
+        }
+        .fullScreenCover(item: $disarming) { alarm in
+            DisarmView(alarm: alarm)
+        }
+        .task(id: scenePhase) {
+            // Al volver a la app, y cada medio minuto mientras está abierta:
+            // una vuelta puede sonar con la app delante, y entonces no hay
+            // cambio de fase que avise.
+            guard scenePhase == .active else { return }
+            while !Task.isCancelled {
+                if disarming == nil {
+                    disarming = alarmStore.alarmAwaitingDisarm()
+                }
+                try? await Task.sleep(for: .seconds(30))
+            }
         }
         // `nil` en modo automático: no fuerza nada y la app hereda el ajuste de
         // iOS, incluido el cambio al anochecer.

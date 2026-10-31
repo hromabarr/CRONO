@@ -146,11 +146,64 @@ extension AlarmItem {
         get {
             followUpAlarmIDsRaw
                 .split(separator: ",")
-                .compactMap { UUID(uuidString: String($0)) }
+                .compactMap { entry in
+                    UUID(uuidString: String(entry.prefix { $0 != "@" }))
+                }
         }
         set {
             followUpAlarmIDsRaw = newValue.map(\.uuidString).joined(separator: ",")
         }
+    }
+
+    /// Las vueltas registradas, con la mañana a la que pertenecen.
+    ///
+    /// Cada entrada es `uuid@ocurrencia@disparo`, con las fechas en segundos
+    /// desde 1970. Sigue siendo una cadena separada por comas, así que no hace
+    /// falta otra versión del esquema. Una entrada sin fechas —el formato de
+    /// antes, solo el identificador— se lee como ya pasada: lo prudente con una
+    /// vuelta de la que no se sabe cuándo suena es cancelarla en la próxima
+    /// limpieza, no conservarla.
+    var scheduledFollowUps: [ScheduledFollowUp] {
+        get {
+            followUpAlarmIDsRaw.split(separator: ",").compactMap { entry in
+                let parts = entry.split(separator: "@")
+                guard let id = parts.first.flatMap({ UUID(uuidString: String($0)) }) else {
+                    return nil
+                }
+                guard parts.count == 3,
+                      let occurrence = TimeInterval(parts[1]),
+                      let fire = TimeInterval(parts[2])
+                else {
+                    return ScheduledFollowUp(systemID: id, occurrence: .distantPast, fireDate: .distantPast)
+                }
+                return ScheduledFollowUp(
+                    systemID: id,
+                    occurrence: Date(timeIntervalSince1970: occurrence),
+                    fireDate: Date(timeIntervalSince1970: fire)
+                )
+            }
+        }
+        set {
+            followUpAlarmIDsRaw = newValue.map { entry in
+                let occurrence = Int(entry.occurrence.timeIntervalSince1970)
+                let fire = Int(entry.fireDate.timeIntervalSince1970)
+                return "\(entry.systemID.uuidString)@\(occurrence)@\(fire)"
+            }
+            .joined(separator: ",")
+        }
+    }
+
+    /// La mañana que está sonando ahora y aún espera que se desarme, si la hay.
+    ///
+    /// Empieza cuando suena la alarma principal y dura hasta un minuto después
+    /// de la última vuelta. Antes de esa hora no hay nada que desarmar: abrir la
+    /// app a las 6:55 no debe enseñar la pantalla de desarme de las 7:00.
+    func occurrenceAwaitingDisarm(at now: Date) -> Date? {
+        guard requiresDisarm else { return nil }
+        return scheduledFollowUps
+            .filter { $0.occurrence <= now && $0.fireDate.addingTimeInterval(60) >= now }
+            .map(\.occurrence)
+            .min()
     }
 
     /// Las vueltas que le tocan a esta alarma según su plan.

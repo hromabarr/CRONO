@@ -1,5 +1,6 @@
 import CoreImage.CIFilterBuiltins
 import SwiftUI
+import UIKit
 
 /// El código de desarme dibujado como QR, para imprimirlo o guardarlo.
 ///
