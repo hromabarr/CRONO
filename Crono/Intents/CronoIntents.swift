@@ -109,6 +109,7 @@ struct MarkHabitIntent: AppIntent {
             persistence.habitStore.failure = nil
             return .result(dialog: "\(failure.message)")
         }
+        WidgetSync.update(context: persistence.container.mainContext)
 
         if model.hasQuantityGoal {
             return .result(dialog: "\(model.name): \(model.progressText(on: today)).")

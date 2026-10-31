@@ -38,6 +38,17 @@ targets:
       - path: Crono
         excludes:
           - Info.plist
+          - Crono.entitlements
+      # Lo que comparte con los widgets: solo Foundation, sin modelos.
+      - path: Shared
+    dependencies:
+      # Se incrusta en Crono.app/PlugIns, así que viaja dentro del .ipa sin
+      # tocar el empaquetado.
+      - target: CronoWidgets
+    # El grupo de apps es por donde la app deja el resumen a los widgets. Si
+    # la firma no lo conserva, los widgets dicen «Abre Crono» en vez de fallar.
+    entitlements:
+      path: Crono/Crono.entitlements
     settings:
       base:
         # El identificador es neutro a propósito: la app crecerá con tareas y
@@ -90,6 +101,36 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+
+  CronoWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CronoWidgets
+        excludes:
+          - Info.plist
+          - CronoWidgets.entitlements
+      - path: Shared
+    entitlements:
+      path: CronoWidgets/CronoWidgets.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.xilgar.crono.widgets
+        PRODUCT_NAME: CronoWidgets
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+    info:
+      path: CronoWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Crono
+        # Tienen que coincidir con las de la app: iOS rechaza instalar una app
+        # cuya extensión lleva otra versión.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
   CronoTests:
     type: bundle.unit-test

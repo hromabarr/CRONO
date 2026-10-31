@@ -24,6 +24,7 @@ struct RootView: View {
     @State private var disarming: AlarmItem?
 
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.modelContext) private var modelContext
 
     @AppStorage(AppearanceMode.storageKey) private var appearance: AppearanceMode = .system
 
@@ -71,6 +72,11 @@ struct RootView: View {
             if disarming == nil {
                 disarming = alarmStore.alarmAwaitingDisarm()
             }
+        }
+        // Al salir de la app es cuando lo que enseñan los widgets puede haberse
+        // quedado atrás.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { WidgetSync.update(context: modelContext) }
         }
         .task(id: scenePhase) {
             // Al volver a la app, y cada medio minuto mientras está abierta:

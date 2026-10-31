@@ -329,6 +329,19 @@ jobs:
           echo "Empaquetando $APP"
           mkdir -p Payload
           cp -R "$APP" Payload/
+
+          # Firma ad hoc solo para dejar escritos los entitlements —el grupo de
+          # apps que comparten la app y los widgets—. No sirve para instalar:
+          # FlareStore o Sideloadly vuelven a firmar con su certificado, y las
+          # herramientas que conservan entitlements los leen de aquí.
+          PAYLOAD_APP="Payload/$(basename "$APP")"
+          for APPEX in "$PAYLOAD_APP"/PlugIns/*.appex; do
+            [ -d "$APPEX" ] || continue
+            codesign --force --sign - --entitlements CronoWidgets/CronoWidgets.entitlements "$APPEX"
+          done
+          codesign --force --sign - --entitlements Crono/Crono.entitlements "$PAYLOAD_APP"
+          ls "$PAYLOAD_APP/PlugIns" || echo "Sin extensiones dentro de la app."
+
           zip -qry Crono-sin-firmar.ipa Payload
           ls -lh Crono-sin-firmar.ipa
 
@@ -420,7 +433,7 @@ jobs:
                   minOSVersion: "26.0"
                 }],
                 appPermissions: {
-                  entitlements: [],
+                  entitlements: ["com.apple.security.application-groups"],
                   privacy: {
                     NSCameraUsageDescription: "Para leer el código que desarma una alarma.",
                     NSAlarmKitUsageDescription: "Para poner alarmas que suenan aunque el móvil esté en silencio."

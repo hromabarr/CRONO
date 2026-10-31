@@ -1,6 +1,7 @@
 # Generado por XcodeGen a partir de project.yml — nunca se versiona.
 *.xcodeproj/
 Crono/Info.plist
+CronoWidgets/Info.plist
 
 # Salidas de compilación
 build/
