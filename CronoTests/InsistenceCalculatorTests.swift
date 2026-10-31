@@ -259,6 +259,14 @@ struct InsistenceCalculatorTests {
         #expect(dates == [date(2026, 10, 31, 0, 1), date(2026, 10, 31, 0, 4)])
     }
 
+    @Test("Cuántas mañanas se registran depende de lo largo que sea el plan")
+    func occurrencesAheadDependsOnPlan() {
+        #expect(InsistenceCalculator.occurrencesAhead(for: .default) == 3)
+        #expect(InsistenceCalculator.occurrencesAhead(for: .untilDisarmed) == 1)
+        #expect(InsistenceCalculator.occurrencesAhead(for: InsistencePlan(intervalMinutes: 2, repeats: 30)) == 2)
+        #expect(InsistenceCalculator.occurrencesAhead(for: .none) == 0)
+    }
+
     @Test("La cuenta acepta solo su resultado")
     func arithmeticChallenge() {
         let challenge = ArithmeticChallenge(factor: 7, multiplier: 13, addend: 42)

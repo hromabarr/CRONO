@@ -55,7 +55,7 @@ struct AlarmFormView: View {
             _disarmKind = State(initialValue: .stop)
             _pairedCode = State(initialValue: nil)
             _disarmHint = State(initialValue: "")
-            _insistence = State(initialValue: .default)
+            _insistence = State(initialValue: .untilDisarmed)
 
         case let .edit(alarm):
             let start = calendar.startOfDay(for: .now)
@@ -77,9 +77,9 @@ struct AlarmFormView: View {
                 _pairedCode = State(initialValue: value)
             }
             _disarmHint = State(initialValue: alarm.disarmHint)
-            // Una alarma sin insistencia propone el plan por defecto, para que
-            // elegir un método ya deje algo razonable sin tocar los pasos.
-            _insistence = State(initialValue: alarm.insistence.isActive ? alarm.insistence : .default)
+            // Una alarma sin insistencia propone «hasta que la desarme», para
+            // que elegir un método ya deje algo razonable sin tocar nada más.
+            _insistence = State(initialValue: alarm.insistence.isActive ? alarm.insistence : .untilDisarmed)
         }
     }
 
@@ -200,11 +200,15 @@ struct AlarmFormView: View {
             if disarmKind == .code { codeRows }
 
             if disarmKind != .stop {
-                Stepper(value: $insistence.intervalMinutes, in: 1...10) {
-                    LabeledContent("Vuelve cada", value: "\(insistence.intervalMinutes) min")
-                }
-                Stepper(value: $insistence.repeats, in: 1...10) {
-                    LabeledContent("Veces", value: "\(insistence.repeats)")
+                Toggle("Hasta que la desarme", isOn: untilDisarmed)
+
+                if !insistence.isUntilDisarmed {
+                    Stepper(value: $insistence.intervalMinutes, in: 1...10) {
+                        LabeledContent("Vuelve cada", value: "\(insistence.intervalMinutes) min")
+                    }
+                    Stepper(value: $insistence.repeats, in: 1...10) {
+                        LabeledContent("Veces", value: "\(insistence.repeats)")
+                    }
                 }
             }
         } header: {
@@ -239,13 +243,31 @@ struct AlarmFormView: View {
         }
     }
 
+    /// El interruptor elige entre el plan sin descanso y uno a medida.
+    ///
+    /// Sale del cuerpo de la vista por lo mismo que el de la alerta en
+    /// `RootView`: un `Binding` con dos cierres dentro de una cadena de
+    /// modificadores es lo que dispara los «unable to type-check».
+    private var untilDisarmed: Binding<Bool> {
+        Binding(
+            get: { insistence.isUntilDisarmed },
+            set: { insistence = $0 ? .untilDisarmed : .default }
+        )
+    }
+
     private var disarmFooter: String {
         guard disarmKind != .stop else { return DisarmMethod.stop.explanation }
         if disarmKind == .code, pairedCode == nil {
             return "Registra un código para poder guardar la alarma."
         }
+        if insistence.isUntilDisarmed {
+            // Se dice lo que de verdad pasa: iOS deja parar cualquier alarma,
+            // y prometer otra cosa sería mentir justo en lo que importa.
+            let task = disarmKind == .code ? "escanees tu código" : "resuelvas la cuenta"
+            return "Podrás pararla, pero volverá cada minuto hasta que \(task), durante una hora como máximo. Mientras suene no se podrá cambiar ni apagar."
+        }
         let span = InsistenceCalculator.totalSpanMinutes(insistence)
-        return "\(disarmMethod.explanation) Te insistirá durante \(span) minutos."
+        return "\(disarmMethod.explanation) Te insistirá durante \(span) minutos. Mientras suene no se podrá cambiar ni apagar."
     }
 
     private var dangerSection: some View {

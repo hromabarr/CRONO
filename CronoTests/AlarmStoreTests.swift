@@ -57,7 +57,7 @@ struct AlarmStoreTests {
         let (alarm, first) = try await makeInsistentAlarm(in: store)
 
         let perMorning = InsistencePlan.default.repeats
-        let mornings = InsistenceCalculator.occurrencesAhead
+        let mornings = InsistenceCalculator.occurrencesAhead(for: .default)
         #expect(alarm.scheduledFollowUps.count == perMorning * mornings)
         #expect(scheduler.followUps.count == perMorning * mornings)
 
@@ -96,9 +96,57 @@ struct AlarmStoreTests {
         // Rellenar tras desarmar añade una mañana al final, nunca recupera la
         // que se acaba de desarmar.
         let perMorning = InsistencePlan.default.repeats
-        let mornings = InsistenceCalculator.occurrencesAhead
+        let mornings = InsistenceCalculator.occurrencesAhead(for: .default)
         #expect(alarm.scheduledFollowUps.count == perMorning * mornings)
         #expect(scheduler.followUps.count == perMorning * mornings)
+    }
+
+    @Test("Mientras insiste no se puede apagar, cambiar ni borrar")
+    func lockedWhileInsisting() async throws {
+        let (store, context, scheduler) = try makeStoreWithScheduler()
+        let (alarm, first) = try await makeInsistentAlarm(in: store)
+        let registered = scheduler.followUps.count
+
+        // Se finge que la primera mañana ya ha empezado moviendo sus vueltas al
+        // presente: el almacén decide con la hora real.
+        let shift = Date.now.addingTimeInterval(-60).timeIntervalSince(first)
+        alarm.scheduledFollowUps = alarm.scheduledFollowUps.map { entry in
+            guard entry.occurrence == first else { return entry }
+            return ScheduledFollowUp(
+                systemID: entry.systemID,
+                occurrence: entry.occurrence.addingTimeInterval(shift),
+                fireDate: entry.fireDate.addingTimeInterval(shift)
+            )
+        }
+        try context.save()
+
+        await store.setEnabled(false, for: alarm)
+        #expect(alarm.isEnabled)
+        #expect(store.failure != nil)
+
+        store.failure = nil
+        await store.delete(alarm)
+        #expect(store.allAlarms().count == 1)
+        #expect(store.failure != nil)
+
+        #expect(scheduler.followUps.count == registered)
+    }
+
+    @Test("Hasta que se desarme registra una sola mañana")
+    func untilDisarmedRegistersOneMorning() async throws {
+        let (store, _, scheduler) = try makeStoreWithScheduler()
+        let minute = (AlarmStore.minuteOfDay(of: .now) + 120) % (24 * 60)
+        let alarm = try #require(
+            await store.create(
+                minuteOfDay: minute,
+                disarmMethod: .scannedCode(value: "CRONO"),
+                insistence: .untilDisarmed
+            )
+        )
+
+        #expect(alarm.scheduledFollowUps.count == 60)
+        #expect(scheduler.followUps.count == 60)
+        #expect(Set(alarm.scheduledFollowUps.map(\.occurrence)).count == 1)
     }
 
     @Test("Desactivar la alarma cancela todas las vueltas")

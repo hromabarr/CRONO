@@ -18,7 +18,19 @@ struct InsistencePlan: Equatable, Sendable {
     /// no despierta a nadie: solo enseña a desactivar la app.
     static let `default` = InsistencePlan(intervalMinutes: 3, repeats: 4)
 
+    /// Cada minuto, hasta que se desarme.
+    ///
+    /// «Hasta que se desarme» con un techo de una hora, que es lo más cerca de
+    /// «sin parar» que permite iOS: el botón Parar existe siempre y ninguna app
+    /// puede quitarlo, así que lo que se hace es que pararla no sirva de nada
+    /// más que un minuto. El techo sigue estando por lo mismo que el del plan
+    /// por defecto, pero una hora sonando cada minuto no la aguanta nadie
+    /// dormido.
+    static let untilDisarmed = InsistencePlan(intervalMinutes: 1, repeats: 60)
+
     var isActive: Bool { intervalMinutes > 0 && repeats > 0 }
+
+    var isUntilDisarmed: Bool { self == .untilDisarmed }
 }
 
 /// Una vuelta de la alarma principal, ya resuelta a hora y días.
@@ -138,7 +150,19 @@ extension InsistenceCalculator {
     /// al desarmar, que exige abrirla; tres mañanas cubren un fin de semana sin
     /// tocar el teléfono. Si pasan más días sin abrirla, la alarma principal
     /// sigue sonando igual: lo que se pierde es solo la insistencia.
-    static let occurrencesAhead = 3
+    ///
+    /// Con planes largos se registran menos mañanas, para no pasar de
+    /// `maxRegisteredFollowUps`: sesenta vueltas por tres mañanas serían 180
+    /// alarmas del sistema por una sola alarma nuestra. Con una mañana basta
+    /// igual, porque desarmar obliga a abrir la app y eso registra la
+    /// siguiente.
+    static func occurrencesAhead(for plan: InsistencePlan) -> Int {
+        guard plan.repeats > 0 else { return 0 }
+        return max(1, min(3, maxRegisteredFollowUps / plan.repeats))
+    }
+
+    /// Cuántas vueltas como mucho se dejan registradas a la vez por alarma.
+    static let maxRegisteredFollowUps = 64
 
     /// Las próximas veces que suena una alarma, a partir de `start` incluido.
     ///

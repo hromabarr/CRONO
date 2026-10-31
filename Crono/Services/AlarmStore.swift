@@ -77,6 +77,8 @@ final class AlarmStore {
         disarmHint: String,
         insistence: InsistencePlan
     ) async {
+        guard !isBlockedWhileInsisting(item, action: "guardar la alarma") else { return }
+
         item.minuteOfDay = max(0, min(minuteOfDay, 24 * 60 - 1))
         item.label = label.trimmingCharacters(in: .whitespacesAndNewlines)
         item.schedule = schedule
@@ -116,6 +118,8 @@ final class AlarmStore {
     }
 
     func setEnabled(_ isEnabled: Bool, for item: AlarmItem) async {
+        guard !isBlockedWhileInsisting(item, action: "cambiar la alarma") else { return }
+
         item.isEnabled = isEnabled
 
         guard save(action: "cambiar la alarma") else {
@@ -127,6 +131,8 @@ final class AlarmStore {
     }
 
     func delete(_ item: AlarmItem) async {
+        guard !isBlockedWhileInsisting(item, action: "eliminar la alarma") else { return }
+
         // Se da de baja del sistema **antes** de borrarla: después ya no habría
         // de dónde leer el identificador, y quedaría una alarma sonando por algo
         // que el usuario cree eliminado.
@@ -230,6 +236,20 @@ final class AlarmStore {
         allAlarms().first { $0.occurrenceAwaitingDisarm(at: now) != nil }
     }
 
+    /// Si la alarma está insistiendo y por eso no se puede tocar.
+    ///
+    /// Cambiarla, apagarla o borrarla cancela sus vueltas, así que permitirlo
+    /// mientras suena sería una forma de desarmarla sin escanear nada. La única
+    /// salida mientras insiste es desarmarla.
+    private func isBlockedWhileInsisting(_ item: AlarmItem, action: String, now: Date = .now) -> Bool {
+        guard item.occurrenceAwaitingDisarm(at: now) != nil else { return false }
+        failure = StoreFailure(
+            action: action,
+            reason: "Está sonando y espera que la desarmes. Desármala primero."
+        )
+        return true
+    }
+
     /// Cancela las vueltas que quedan de esta mañana.
     ///
     /// Solo las de esta mañana: las de los días siguientes siguen registradas,
@@ -267,7 +287,7 @@ final class AlarmStore {
                 minuteOfDay: item.minuteOfDay,
                 schedule: item.schedule,
                 from: now.addingTimeInterval(1),
-                count: InsistenceCalculator.occurrencesAhead
+                count: InsistenceCalculator.occurrencesAhead(for: item.insistence)
             )
 
             register: for occurrence in occurrences where !covered.contains(occurrence) {
